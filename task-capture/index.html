@@ -114,14 +114,14 @@ details p { margin: 10px 0 0; font-size: 14px; color: var(--muted); max-width: 3
 .words { border-top: 1px solid var(--line); padding-top: 18px; }
 .words-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; }
 .mic { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--muted); }
-.mic i { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); display: block; }
-.mic.on i { background: var(--accent); }
+.mic > i { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); display: block; }
+.mic.on > i { background: var(--accent); }
 .mic.bad { color: var(--warn); }
-.mic.bad i { background: var(--warn); }
+.mic.bad > i { background: var(--warn); }
 #mic-help { margin-top: 8px; color: var(--warn); }
 #words-tip { margin-top: 4px; }
 #lines { margin-top: 12px; display: flex; flex-direction: column; max-height: max(160px, calc(100vh - 400px)); overflow-y: auto; }
-.is-done #lines { max-height: max(160px, calc(100vh - 520px)); }
+.is-done #lines { max-height: max(96px, calc(100vh - 640px)); }
 .line { display: flex; align-items: baseline; gap: 14px; padding: 9px 0; border-bottom: 1px solid var(--line); }
 .line time { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; flex: 0 0 auto; min-width: 40px; }
 .text-edit { flex: 1 1 auto; min-width: 0; outline: none; border-radius: 4px; padding: 2px 6px; margin: -2px -6px; overflow-wrap: anywhere; cursor: text; }
@@ -136,9 +136,38 @@ details p { margin: 10px 0 0; font-size: 14px; color: var(--muted); max-width: 3
 .fields { display: flex; flex-direction: column; gap: 22px; margin-top: 28px; }
 .agree-title { margin-bottom: 14px; }
 #done-head { grid-column: 1 / -1; }
+#done-head h2 { font-size: clamp(32px, 4vw, 42px); }
+#done-head .lede { font-size: 17px; margin-top: 8px; max-width: none; }
+.is-done .top { margin-bottom: 24px; }
+.is-done .split { row-gap: 18px; margin-bottom: 18px; }
+.is-done .fields { gap: 12px; }
+.is-done .fields input[type="text"], .is-done .fields textarea { font-size: 17px; padding: 5px 0 8px; }
+.is-done #note-input { font-size: 16px; padding: 5px 0 8px; }
+.is-done #pics { padding-top: 14px; }
+.is-done #strip { padding: 8px 2px 4px; }
+.is-done .thumb-open img { height: 60px; }
 .is-done .words { order: 1; }
 .is-done #done-col { order: 2; border-top: 1px solid var(--line); padding-top: 18px; }
 .is-done .fields { margin-top: 16px; }
+
+.meter { display: inline-block; width: 64px; height: 4px; border-radius: 2px; background: var(--line); overflow: hidden; flex: 0 0 auto; }
+.meter i { display: block; width: 100%; height: 100%; background: var(--accent); transform-origin: left center; transform: scaleX(0); transition: transform 0.08s linear; }
+.level { display: flex; align-items: center; gap: 12px; }
+.pair { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 28px; margin-bottom: 22px; }
+@media (max-width: 520px) { .pair { grid-template-columns: minmax(0, 1fr); gap: 22px 0; } }
+
+/* pictures to review */
+#pics { grid-column: 1 / -1; order: 3; border-top: 1px solid var(--line); padding-top: 18px; }
+#strip { display: flex; gap: 10px; overflow-x: auto; padding: 12px 2px 8px; }
+.thumb { position: relative; flex: 0 0 auto; }
+.thumb-open { padding: 0; border: 1px solid var(--line); border-radius: 4px; overflow: hidden; display: block; cursor: zoom-in; }
+.thumb-open img { height: 76px; width: auto; display: block; }
+.thumb .x { position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; padding: 0; border: 1px solid var(--line); border-radius: 50%; background: var(--bg); color: var(--ink); font-size: 15px; line-height: 1; }
+.thumb .x:hover { color: var(--rec); border-color: var(--rec); }
+dialog#viewer { border: 0; border-radius: 10px; padding: 20px; max-width: min(1100px, 94vw); background: var(--bg); color: var(--ink); }
+dialog#viewer::backdrop { background: rgba(17, 21, 19, 0.55); }
+#viewer-img { max-width: 100%; max-height: 72vh; display: block; border: 1px solid var(--line); border-radius: 4px; }
+dialog#viewer .actions { margin-top: 16px; justify-content: space-between; }
 
 /* the way forward is always bottom right */
 .nav { margin-top: auto; padding-top: 18px; display: flex; align-items: center; justify-content: space-between; gap: 16px 28px; flex-wrap: wrap; border-top: 1px solid var(--line); }
@@ -220,6 +249,7 @@ details p { margin: 10px 0 0; font-size: 14px; color: var(--muted); max-width: 3
         <p class="wait" id="mic-wait">Your words will show here.</p>
         <p class="ok" id="mic-ok" hidden>Good. We can hear you.</p>
         <p class="heard" id="mic-heard" hidden></p>
+        <div class="level" id="level-test" hidden><span class="meta">Sound level</span><span class="meter"><i></i></span></div>
         <p class="meta" id="mic-label" hidden></p>
       </div>
     </div>
@@ -230,9 +260,14 @@ details p { margin: 10px 0 0; font-size: 14px; color: var(--muted); max-width: 3
     <div class="col">
       <h2>What are you about to do?</h2>
       <form id="task-form" autocomplete="off">
+        <div class="pair">
+          <div><label for="who-name">Your name</label><input type="text" id="who-name" placeholder="Jordan Lee" autocomplete="name"></div>
+          <div><label for="who-co">Company</label><input type="text" id="who-co" placeholder="Lee Plumbing" autocomplete="organization"></div>
+        </div>
         <label for="task-name">Name the task</label>
         <input type="text" id="task-name" placeholder="Entering vendor invoices">
       </form>
+      <p class="note bad" id="task-note" hidden></p>
     </div>
     <div class="col">
       <ol class="points">
@@ -262,6 +297,7 @@ details p { margin: 10px 0 0; font-size: 14px; color: var(--muted); max-width: 3
         <li>Do your work in another tab or app, and keep talking.</li>
         <li>When the task is done, click <strong>Finish</strong> at the bottom right.</li>
       </ul>
+      <p class="note warn" id="quiet-note" hidden>You have been quiet for a while. If you skipped explaining a step, say it now or type it in on the right.</p>
     </div>
     <div class="col" id="done-col" hidden>
       <h3>2. Answer three quick questions</h3>
@@ -274,13 +310,30 @@ details p { margin: 10px 0 0; font-size: 14px; color: var(--muted); max-width: 3
     <div class="col words">
       <div class="words-head">
         <h3 id="words-title">Your words</h3>
-        <div class="mic" id="mic"><i></i><span id="mic-text">Starting microphone</span><button class="text" id="btn-mic" type="button" hidden>Reconnect microphone</button></div>
+        <div class="mic" id="mic"><span class="meter"><i></i></span><i></i><span id="mic-text">Starting microphone</span><button class="text" id="btn-mic" type="button" hidden>Reconnect microphone</button></div>
       </div>
       <p class="meta" id="mic-help" hidden></p>
       <p class="meta" id="words-tip"></p>
       <div id="lines"></div>
       <p class="interim" id="interim" hidden></p>
       <input type="text" id="note-input" placeholder="Or type a line and press Enter" aria-label="Type a line" autocomplete="off">
+    </div>
+    <div class="col" id="pics" hidden>
+      <div class="words-head"><h3>3. Check your pictures</h3><p class="meta" id="pics-count"></p></div>
+      <p class="meta">Click a picture to see it larger. Remove any you don't want to send.</p>
+      <div id="strip"></div>
+    </div>
+  </section>
+
+  <!-- ALL DONE -->
+  <section class="split" id="v-end" hidden>
+    <div class="col">
+      <h1>That's everything. Thank&nbsp;you.</h1>
+      <p class="lede">Screen sharing and the microphone are off. Send us the files listed here from your Downloads folder, then you can close this tab.</p>
+    </div>
+    <div class="col">
+      <h3 class="agree-title">Your capture files</h3>
+      <ol class="points" id="end-list"></ol>
     </div>
   </section>
 
@@ -295,6 +348,13 @@ details p { margin: 10px 0 0; font-size: 14px; color: var(--muted); max-width: 3
     </div>
   </footer>
 </main>
+<dialog id="viewer" aria-label="Picture">
+  <img id="viewer-img" alt="">
+  <div class="actions">
+    <span class="meta" id="viewer-cap"></span>
+    <span class="nav-side"><button id="viewer-remove" type="button">Remove this picture</button><button class="primary" id="viewer-close" type="button">Close</button></span>
+  </div>
+</dialog>
 <svg id="vine" aria-hidden="true"></svg>
 
 <script>
@@ -387,6 +447,7 @@ function buildNotes(s) {
   const ans = (v) => (v && v.trim()) ? v.trim() : "(not answered)";
   const lines = [];
   lines.push("# Task capture: " + s.task, "");
+  if (s.person) lines.push("- Person: " + s.person + (s.company ? " (" + s.company + ")" : ""));
   lines.push("- Recorded: " + s.startedAt);
   lines.push("- Length: " + fmtClock(s.activeMs) + " (pauses left out)");
   lines.push("- Screenshots: " + shots + " (saved only when the screen changed)");
@@ -434,23 +495,32 @@ let micOk = false, micTesting = false, micTimer = null;
 let lastSay = null;
 let ticker = null, uiTimer = null, busy = false;
 let segStart = 0, lastCells = null, shots = [], saved = true, savedName = "", saving = false, armed = false;
+let savedFiles = [], viewing = -1;
+let micStream = null, audioCtx = null, analyser = null, levelBuf = null, levelRaf = 0, lastLoud = 0;
+let lastVoice = 0, quietShots = 0;
+const TITLE = document.title;
 const video = document.createElement("video");
 video.muted = true; video.playsInline = true;
 const small = document.createElement("canvas"); small.width = CELL_W; small.height = CELL_H;
 const smallCtx = small.getContext("2d", { willReadFrequently: true });
 const big = document.createElement("canvas");
 
-function fileName(task, d) {
+function fileName(task, d, who) {
   const pad = (n) => String(n).padStart(2, "0");
-  const clean = (task || "").replace(/[^A-Za-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 40) || "task";
-  return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()) + " " + pad(d.getHours()) + "." + pad(d.getMinutes()) + " - " + clean + " - Task Capture.zip";
+  const tidy = (v, n) => (v || "").replace(/[^A-Za-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim().slice(0, n).trim();
+  const stamp = d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()) + " " + pad(d.getHours()) + "." + pad(d.getMinutes());
+  return [stamp, tidy(who, 24), tidy(task, 40) || "task", "Task Capture"].filter(Boolean).join(" - ") + ".zip";
 }
 
 function render() {
   const setup = state === "setup";
   const live = state === "live" || state === "paused";
   for (const s of STEPS) $("v-" + s).hidden = !(setup && step === s);
-  $("v-session").hidden = setup;
+  $("v-session").hidden = setup || state === "end";
+  $("v-end").hidden = state !== "end";
+  $("pics").hidden = state !== "done";
+  document.title = state === "live" ? "Recording \u2022 Task Capture" : state === "paused" ? "Paused \u2022 Task Capture" : TITLE;
+  if (state !== "live") $("quiet-note").hidden = true;
   $("live-col").hidden = !live;
   $("done-col").hidden = state !== "done";
   $("done-head").hidden = state !== "done";
@@ -484,51 +554,141 @@ function render() {
 
 // The forward button is always bottom right; this decides what it says and does.
 function nav() {
-  let back = false, alt = "", next = "Next", off = false, msg = "";
+  let back = "", alt = "", next = "Next", off = false, msg = "";
   if (state === "setup") {
     if (step === "intro") { next = "I agree. Set me up"; msg = "Setup takes about a minute. Use Chrome or Edge on a computer."; }
-    else if (step === "screen") { back = true; off = !screenOk; msg = screenOk ? "" : "Share your screen, then click Next."; }
-    else if (step === "mic") { back = true; off = !micOk; alt = micOk ? "" : "Skip. I'll type my notes instead"; }
-    else { back = true; next = "Start recording"; }
+    else if (step === "screen") { back = "Back"; off = !screenOk; msg = screenOk ? "" : "Share your screen, then click Next."; }
+    else if (step === "mic") { back = "Back"; off = !micOk; alt = micOk ? "" : "Skip. I'll type my notes instead"; }
+    else { back = "Back"; next = "Start recording"; }
   } else if (state === "done") {
     if (!shots.length) { next = "Start over"; }
-    else if (saved) { next = "Capture another task"; alt = "Save the file again"; }
-    else { next = "Save my capture file"; alt = armed ? "Click again to discard" : "Discard and start over"; off = saving; msg = saving ? "Building your file\u2026" : ""; }
+    else if (saved) { next = "Capture another task"; alt = "I'm done for today"; back = "Save the file again"; }
+    else {
+      next = "Save my capture file"; alt = armed ? "Click again to discard" : "Discard and start over"; off = saving;
+      msg = saving ? "Building your file\u2026" : "Your screen stays shared so your next task starts in one click.";
+    }
+  } else if (state === "end") {
+    next = "Capture another task";
   } else {
     next = "Finish"; msg = "When the task is done, click Finish.";
   }
-  $("btn-back").hidden = !back;
+  $("btn-back").hidden = !back; $("btn-back").textContent = back || "Back";
   $("btn-alt").hidden = !alt; $("btn-alt").textContent = alt;
   $("btn-next").textContent = next; $("btn-next").disabled = off;
   const m = $("nav-msg");
   m.textContent = msg;
   if (state === "done" && saved && savedName) {
     const b = document.createElement("b"); b.textContent = savedName;
-    m.append("Saved to your Downloads folder as ", b, ". Send that file to the person who gave you this link.");
+    m.append("Saved to your Downloads folder as ", b, ".");
   }
   m.hidden = !m.textContent;
-  growVine({ intro: 0.2, screen: 0.4, mic: 0.58, task: 0.76 }[state === "setup" ? step : ""] || (state === "done" ? 1 : 0.9));
+  growVine({ intro: 0.2, screen: 0.4, mic: 0.58, task: 0.76 }[state === "setup" ? step : ""] || (state === "done" || state === "end" ? 1 : 0.9));
 }
 function onNext() {
   if (state === "setup") {
     if (step === "intro") agree();
-    else if (step === "screen") { if (!screenOk) return; if (micOk) { go("task"); $("task-name").focus(); } else go("mic"); }
+    else if (step === "screen") { if (!screenOk) return; if (micOk) { go("task"); focusTask(); } else go("mic"); }
     else if (step === "mic") leaveMic();
     else startRecording();
   } else if (state === "done") {
-    if (saved || !shots.length) restart(); else save();
+    if (saved || !shots.length) nextTask(); else save();
+  } else if (state === "end") {
+    state = "setup"; note("screen-note", ""); go("screen");
   } else stop();
 }
 function onAlt() {
   if (state === "setup" && step === "mic") leaveMic();
-  else if (state === "done") { if (saved) save(); else discard(); }
+  else if (state === "done") { if (saved) finishDay(); else discard(); }
 }
 function onBack() {
+  if (state === "done") { if (saved) save(); return; }
   const i = STEPS.indexOf(step);
   if (state !== "setup" || i < 1) return;
   if (step === "mic") { micTesting = false; clearTimeout(micTimer); stopSpeech(); }
   go(STEPS[i - 1]);
 }
+function focusTask() { ($("who-name").value.trim() ? $("task-name") : $("who-name")).focus(); }
+
+// ---------- sound level ----------
+async function openMeter() {
+  if (micStream) return true;
+  try { micStream = await navigator.mediaDevices.getUserMedia({ audio: true }); } catch (e) { micStream = null; return false; }
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    audioCtx = new AC();
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 512;
+    audioCtx.createMediaStreamSource(micStream).connect(analyser);
+    levelBuf = new Uint8Array(analyser.fftSize);
+    cancelAnimationFrame(levelRaf);
+    levelRaf = requestAnimationFrame(meterLoop);
+  } catch (e) { analyser = null; }
+  return true;
+}
+function meterLoop() {
+  if (!analyser) return;
+  levelRaf = requestAnimationFrame(meterLoop);
+  analyser.getByteTimeDomainData(levelBuf);
+  let peak = 0;
+  for (let i = 0; i < levelBuf.length; i++) { const v = Math.abs(levelBuf[i] - 128); if (v > peak) peak = v; }
+  const lvl = Math.min(1, peak / 48);
+  if (lvl > 0.2) lastLoud = performance.now();
+  document.querySelectorAll(".meter i").forEach((el) => { el.style.transform = "scaleX(" + lvl.toFixed(2) + ")"; });
+}
+function closeMeter() {
+  cancelAnimationFrame(levelRaf);
+  if (micStream) micStream.getTracks().forEach((t) => t.stop());
+  if (audioCtx) { try { audioCtx.close(); } catch (e) {} }
+  micStream = null; audioCtx = null; analyser = null;
+  document.querySelectorAll(".meter i").forEach((el) => { el.style.transform = "scaleX(0)"; });
+}
+
+// ---------- quiet nudge ----------
+function voiced() { lastVoice = performance.now(); quietShots = 0; $("quiet-note").hidden = true; if (state === "live") document.title = "Recording \u2022 Task Capture"; }
+function quietWatch() {
+  if (state !== "live" || !sr) return;
+  if (performance.now() - lastVoice > 60000 && quietShots >= 3) {
+    $("quiet-note").hidden = false;
+    document.title = "Keep talking us through it \u2022 Task Capture";
+  }
+}
+
+// ---------- pictures ----------
+function liveShots() { return shots.filter((x) => !x.ev.removed); }
+function buildStrip() {
+  const box = $("strip");
+  box.innerHTML = "";
+  shots.forEach((sh, i) => {
+    if (sh.ev.removed) return;
+    if (!sh.url) sh.url = URL.createObjectURL(sh.blob);
+    const wrap = document.createElement("div"); wrap.className = "thumb";
+    const open = document.createElement("button"); open.type = "button"; open.className = "thumb-open";
+    open.setAttribute("aria-label", "See the picture from " + fmtClock(sh.ev.t) + " larger");
+    const img = document.createElement("img"); img.src = sh.url; img.alt = ""; img.loading = "lazy";
+    open.appendChild(img);
+    open.addEventListener("click", () => openViewer(i));
+    const x = document.createElement("button"); x.type = "button"; x.className = "x"; x.textContent = "\u00d7";
+    x.setAttribute("aria-label", "Remove the picture from " + fmtClock(sh.ev.t));
+    x.addEventListener("click", () => removeShot(i));
+    wrap.append(open, x);
+    box.appendChild(wrap);
+  });
+  const n = liveShots().length;
+  $("pics-count").textContent = n + (n === 1 ? " picture" : " pictures");
+}
+function removeShot(i) {
+  shots[i].ev.removed = true;
+  if (saved && savedName) saved = false;
+  buildStrip(); nav();
+}
+function openViewer(i) {
+  viewing = i;
+  $("viewer-img").src = shots[i].url;
+  $("viewer-cap").textContent = "Taken at " + fmtClock(shots[i].ev.t);
+  const d = $("viewer");
+  if (d.showModal) d.showModal(); else d.setAttribute("open", "");
+}
+function closeViewer() { const d = $("viewer"); if (d.close) d.close(); else d.removeAttribute("open"); viewing = -1; }
 
 // ---------- vine ----------
 let vineStem = null, vineLeaves = [];
@@ -611,7 +771,8 @@ async function shareScreen() {
   const mine = screenStream;
   track.addEventListener("ended", () => {
     if (screenStream !== mine) return;
-    if (state === "live" || state === "paused") { stop(); return; }
+    if (state === "live" || state === "paused") { stop(); dropScreen(); nav(); return; }
+    if (state === "done") { dropScreen(); return; }
     if (state === "setup") {
       dropScreen();
       note("screen-note", "Screen sharing stopped. Share your screen again to continue.", "bad");
@@ -644,11 +805,10 @@ async function testMic() {
   $("mic-label").hidden = true;
   micOk = false;
   let label = "";
-  try {
-    const s = await navigator.mediaDevices.getUserMedia({ audio: true });
-    label = (s.getAudioTracks()[0] || {}).label || "";
-    s.getTracks().forEach((t) => t.stop());
-  } catch (e) {
+  if (await openMeter()) {
+    label = (micStream.getAudioTracks()[0] || {}).label || "";
+    $("level-test").hidden = false;
+  } else {
     note("mic-note", "Your browser is blocking the microphone for this page. Click the icon at the left of the address bar, allow the microphone, then test again.", "warn");
     render();
     return;
@@ -670,7 +830,10 @@ async function testMic() {
   micTimer = setTimeout(() => {
     if (!micTesting) return;
     const phone = /iphone|ipad|airpods|headset|hands-free/i.test(label);
-    note("mic-note", phone
+    const loud = lastLoud > 0 && performance.now() - lastLoud < 12000;
+    note("mic-note", loud
+      ? "We can hear sound, but couldn't make out any words. Speak clearly toward the microphone and test again, or skip and type your notes."
+      : phone
       ? "We can't hear you yet. Your computer is listening on a phone or headset. Open your computer's sound settings, set the input to its built-in microphone, then test again."
       : "We can't hear you yet. Speak a little louder, or check that the right microphone is chosen in your computer's sound settings, then test again.", "warn");
     micTesting = false;
@@ -689,7 +852,7 @@ function testHeard(text, final) {
 function leaveMic() {
   micTesting = false; clearTimeout(micTimer); stopSpeech();
   go("task");
-  $("task-name").focus();
+  focusTask();
 }
 
 // ---------- speech ----------
@@ -728,6 +891,7 @@ function startSpeech() {
   r.onresult = (e) => {
     if (sr !== r) return;
     srFails = 0;
+    if (state === "live") voiced();
     let interim = "";
     for (let i = e.resultIndex; i < e.results.length; i++) {
       const res = e.results[i];
@@ -829,6 +993,7 @@ function addNote() {
   const text = el.value.trim();
   if (!text || !session) return;
   lastSay = null;
+  voiced();
   addLine(addEvent("note", { text }));
   el.value = "";
 }
@@ -842,12 +1007,24 @@ function startRecording(ev) {
     go("screen");
     return;
   }
+  const person = $("who-name").value.trim(), company = $("who-co").value.trim();
+  if (!person) {
+    note("task-note", "Add your name so we know whose capture this is.", "bad");
+    $("who-name").focus();
+    return;
+  }
+  note("task-note", "");
+  try { localStorage.setItem("tc-who", JSON.stringify({ person, company })); } catch (e) {}
   session = {
     task: $("task-name").value.trim() || "Untitled task",
+    person, company,
     startedAt: new Date().toLocaleString(),
     activeMs: 0, events: [], answers: {}, speechOk: false,
   };
-  shots = []; lastCells = null; lastSay = null; saved = false;
+  dropShots();
+  lastCells = null; lastSay = null; saved = false; savedName = "";
+  lastVoice = performance.now(); quietShots = 0;
+  openMeter();
   emptyLines();
   state = "live";
   segStart = performance.now();
@@ -866,7 +1043,11 @@ function startRecording(ev) {
   window.scrollTo(0, 0);
 }
 
-function tick() { micWatch(); sample(); }
+function tick() { micWatch(); quietWatch(); sample(); }
+function dropShots() {
+  for (const sh of shots) if (sh.url) URL.revokeObjectURL(sh.url);
+  shots = [];
+}
 
 async function sample() {
   if (state !== "live" || busy) return;
@@ -895,8 +1076,8 @@ async function sample() {
     const blob = await new Promise((res) => big.toBlob(res, "image/jpeg", JPEG_Q));
     if (!blob || state !== "live") return;
     const file = "screenshots/" + String(shots.length + 1).padStart(4, "0") + ".jpg";
-    shots.push({ name: file, blob });
-    addEvent("shot", { file });
+    shots.push({ name: file, blob, ev: addEvent("shot", { file }) });
+    quietShots++;
   } finally { busy = false; }
 }
 
@@ -917,6 +1098,7 @@ function togglePause() {
     session.activeMs += performance.now() - segStart;
     state = "paused";
     stopSpeech();
+    closeMeter();
     setMic("off");
   } else if (state === "paused") {
     state = "live";
@@ -924,6 +1106,8 @@ function togglePause() {
     addEvent("resume");
     lastCells = null;
     srFails = 0;
+    lastVoice = performance.now(); quietShots = 0;
+    openMeter();
     startSpeech();
   }
   lastSay = null;
@@ -937,9 +1121,10 @@ function stop() {
   clearInterval(uiTimer);
   if (ticker) { ticker.terminate(); ticker = null; }
   stopSpeech();
-  dropScreen();
+  closeMeter();
+  buildStrip();
   $("summary").textContent = shots.length
-    ? minutesText(session.activeMs) + " and " + shotsText() + " of \u201c" + session.task + "\u201d. Two quick things, then save your file."
+    ? minutesText(session.activeMs) + " and " + shotsText() + " of \u201c" + session.task + "\u201d. Three quick things, then save your file."
     : "No screenshots were taken, so there is nothing to save yet. Click Start over to try again.";
   savedName = ""; armed = false;
   render();
@@ -951,13 +1136,15 @@ async function save() {
   saving = true; render();
   try {
     session.answers = { often: $("q-often").value, decide: $("q-decide").value, wrong: $("q-wrong").value };
-    const files = [{ name: "notes.md", blob: new Blob([buildNotes(session)], { type: "text/markdown" }) }, ...shots];
+    const files = [{ name: "notes.md", blob: new Blob([buildNotes(session)], { type: "text/markdown" }) }, ...liveShots().map((x) => ({ name: x.name, blob: x.blob }))];
     const zip = await buildZip(files);
-    const name = fileName(session.task, new Date());
+    const name = fileName(session.task, new Date(), session.person);
     const a = document.createElement("a");
     a.href = URL.createObjectURL(zip);
     a.download = name;
     document.body.appendChild(a); a.click(); a.remove();
+    if (savedName) savedFiles.pop();
+    savedFiles.push({ task: session.task, name });
     saved = true; savedName = name;
   } catch (e) {
     saving = false; render();
@@ -974,13 +1161,32 @@ function discard() {
     setTimeout(() => { if (armed) { armed = false; render(); } }, 5000);
     return;
   }
-  restart();
+  nextTask();
 }
-function restart() {
+function resetTask() {
   for (const id of ["task-name", "q-often", "q-decide", "q-wrong", "note-input"]) $(id).value = "";
-  session = null; shots = []; saved = true; savedName = ""; armed = false; state = "setup";
-  note("screen-note", "");
-  go("screen");
+  session = null; dropShots(); saved = true; savedName = ""; armed = false; state = "setup";
+  note("screen-note", ""); note("task-note", "");
+}
+function nextTask() {
+  const sharing = !!(track && track.readyState === "live");
+  resetTask();
+  if (sharing) { screenOk = true; go("task"); focusTask(); }
+  else { dropScreen(); go("screen"); }
+}
+function finishDay() {
+  resetTask();
+  dropScreen(); closeMeter(); stopSpeech();
+  const list = $("end-list");
+  list.innerHTML = "";
+  for (const f of savedFiles) {
+    const li = document.createElement("li"), d = document.createElement("div"), h = document.createElement("h3"), p = document.createElement("p");
+    h.textContent = f.task; p.textContent = f.name;
+    d.append(h, p); li.appendChild(d); list.appendChild(li);
+  }
+  state = "end";
+  render();
+  window.scrollTo(0, 0);
 }
 
 $("btn-next").addEventListener("click", onNext);
@@ -995,6 +1201,14 @@ $("note-input").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.
 window.addEventListener("beforeunload", (e) => {
   if (state === "live" || state === "paused" || !saved) { e.preventDefault(); e.returnValue = ""; }
 });
+$("viewer-close").addEventListener("click", closeViewer);
+$("viewer-remove").addEventListener("click", () => { const i = viewing; closeViewer(); if (i >= 0) removeShot(i); });
+$("viewer").addEventListener("close", () => { viewing = -1; });
+try {
+  const who = JSON.parse(localStorage.getItem("tc-who") || "{}");
+  if (who.person) $("who-name").value = who.person;
+  if (who.company) $("who-co").value = who.company;
+} catch (e) {}
 buildVine();
 render();
 </script>
