@@ -39,6 +39,11 @@ main { max-width: 1160px; margin: 0 auto; padding: 28px 40px 28px; min-height: 1
 .top { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: clamp(28px, 6vh, 64px); }
 .brand { display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; }
 .brand i { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); display: block; }
+.top-right { display: flex; align-items: center; gap: 12px 26px; flex-wrap: wrap; justify-content: flex-end; }
+.links { display: flex; align-items: center; gap: 16px; font-size: 14px; }
+.links a { color: var(--muted); text-underline-offset: 3px; }
+.links a.pill-link { color: var(--ink); text-decoration: none; border: 1px solid var(--line); border-radius: 999px; padding: 6px 15px; font-weight: 500; }
+.links a.pill-link:hover { border-color: var(--ink); }
 .progress { display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--muted); }
 .progress ol { list-style: none; display: flex; gap: 6px; margin: 0; padding: 0; }
 .progress li { width: 28px; height: 3px; border-radius: 2px; background: var(--line); }
@@ -201,7 +206,10 @@ dialog#viewer .actions { margin-top: 16px; justify-content: space-between; }
 <main id="app">
   <div class="top">
     <div class="brand"><i></i>The Ivy Path</div>
-    <div class="progress" id="progress"><span id="progress-text">Step 1 of 4</span><ol aria-hidden="true"><li></li><li></li><li></li><li></li></ol></div>
+    <div class="top-right">
+      <div class="progress" id="progress"><span id="progress-text">Step 1 of 4</span><ol aria-hidden="true"><li></li><li></li><li></li><li></li></ol></div>
+      <div class="links" id="top-links" hidden><a href="../">My tasks</a><a class="pill-link" id="top-admin" href="../admin/" hidden>Admin</a></div>
+    </div>
   </div>
 
   <!-- 1. INTRO -->
@@ -596,6 +604,7 @@ function render() {
   $("done-head").hidden = state !== "done";
   $("words-title").textContent = state === "done" ? "1. Check your words" : "Your words";
   $("progress").hidden = !setup;
+  $("top-links").hidden = !acct || !(setup || state === "end");
   const n = STEPS.indexOf(step) + 1;
   $("progress-text").textContent = "Step " + n + " of 4";
   document.querySelectorAll("#progress li").forEach((li, i) => li.classList.toggle("on", i < n));
@@ -1393,6 +1402,7 @@ async function initAccount() {
   acct = u;
   let p = null;
   try { p = await IVY.profile(u.id); } catch (e) {}
+  $("top-admin").hidden = !(p && p.is_admin);
   if (p && p.full_name) $("who-name").value = p.full_name;
   if (p && p.company) $("who-co").value = p.company;
   $("who-email").value = u.email || "";
@@ -1414,7 +1424,7 @@ async function initAccount() {
       if (data && data.status === "needs_detail") $("task-name").value = data.title; else redoId = null;
     } catch (e) { redoId = null; }
   }
-  nav();
+  render();
 }
 buildVine();
 render();
