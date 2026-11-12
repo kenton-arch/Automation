@@ -3,13 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light">
 <title>Task Capture | The Ivy Path</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Instrument+Serif&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Instrument+Serif:ital@0;1&display=swap">
 <style>
-/* Layout: one quiet column on a plain ground. Ink does the work; hairlines separate; color only marks state. */
+/* Layout: one screen per step, two columns. Left is what to do, right is proof that it worked. Light only. */
 :root {
+  color-scheme: light;
   --bg: #ffffff;
   --ink: #111513;
   --muted: #5f6763;
@@ -21,19 +23,6 @@
   --display: "Instrument Serif", "Iowan Old Style", Georgia, serif;
   --body: "Geist", system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
 }
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0b0d0c;
-    --ink: #f2f4f3;
-    --muted: #9ba39f;
-    --line: #232826;
-    --soft: #141816;
-    --accent: #6fcf9f;
-    --rec: #ff6b5c;
-    --warn: #e3a63c;
-    color-scheme: dark;
-  }
-}
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
 html { -webkit-text-size-adjust: 100%; }
@@ -44,198 +33,245 @@ body {
   font: 400 17px/1.55 var(--body);
   -webkit-font-smoothing: antialiased;
 }
-main {
-  max-width: 660px;
-  margin: 0 auto;
-  padding: 40px 24px 96px;
-}
-section { display: flex; flex-direction: column; }
+main { max-width: 1160px; margin: 0 auto; padding: 28px 40px 40px; }
+@media (max-width: 700px) { main { padding: 20px 20px 32px; } }
 
-.brand {
-  display: flex; align-items: center; gap: 10px;
-  font-size: 13px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase;
-  margin-bottom: 88px;
-}
+.top { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: clamp(28px, 6vh, 64px); }
+.brand { display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; }
 .brand i { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); display: block; }
+.progress { display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--muted); }
+.progress ol { list-style: none; display: flex; gap: 6px; margin: 0; padding: 0; }
+.progress li { width: 28px; height: 3px; border-radius: 2px; background: var(--line); }
+.progress li.on { background: var(--ink); }
+
+.split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: clamp(32px, 6vw, 88px); align-items: start; }
+@media (max-width: 860px) { .split { grid-template-columns: minmax(0, 1fr); gap: 32px; } }
+.col { display: flex; flex-direction: column; min-width: 0; }
 
 h1, h2 { font-family: var(--display); font-weight: 400; margin: 0; text-wrap: balance; letter-spacing: -0.01em; }
-h1 { font-size: clamp(44px, 9vw, 68px); line-height: 1.02; }
-h2 { font-size: clamp(36px, 7vw, 48px); line-height: 1.06; }
+h1 { font-size: clamp(44px, 6vw, 68px); line-height: 1.02; }
+h2 { font-size: clamp(38px, 5vw, 54px); line-height: 1.05; }
 h3 { font-size: 15px; font-weight: 600; margin: 0; }
-.lede { font-size: 19px; line-height: 1.5; color: var(--muted); margin: 20px 0 0; max-width: 34em; }
+.lede { font-size: 19px; line-height: 1.5; color: var(--muted); margin: 18px 0 0; max-width: 30em; }
 .meta { font-size: 14px; color: var(--muted); margin: 0; }
-.error { color: var(--rec); font-size: 15px; margin: 16px 0 0; }
+.note { font-size: 15px; margin: 16px 0 0; max-width: 32em; }
+.note.bad { color: var(--rec); }
+.note.warn { color: var(--warn); }
 
-/* fields: a single hairline, no boxes */
 label { font-size: 14px; font-weight: 500; color: var(--muted); display: block; }
 input[type="text"], textarea {
-  font: inherit; font-size: 19px;
-  color: var(--ink);
-  background: transparent;
-  border: 0; border-bottom: 1px solid var(--line);
-  border-radius: 0;
-  padding: 10px 0 12px;
-  width: 100%;
-  outline: none;
-  transition: border-color 0.15s;
+  font: inherit; font-size: 19px; color: var(--ink);
+  background: transparent; border: 0; border-bottom: 1px solid var(--line); border-radius: 0;
+  padding: 8px 0 10px; width: 100%; outline: none; transition: border-color 0.15s;
 }
-textarea { resize: none; min-height: 0; field-sizing: content; line-height: 1.45; }
+textarea { resize: none; field-sizing: content; line-height: 1.45; }
 input[type="text"]::placeholder, textarea::placeholder { color: var(--muted); opacity: 0.6; }
 input[type="text"]:focus, textarea:focus { border-bottom-color: var(--ink); }
 
 button {
   font: inherit; font-size: 16px; font-weight: 500;
-  border-radius: 999px;
-  border: 1px solid var(--line);
-  background: transparent;
-  color: var(--ink);
-  padding: 13px 26px;
-  cursor: pointer;
-  transition: border-color 0.15s, opacity 0.15s;
+  border-radius: 999px; border: 1px solid var(--line); background: transparent; color: var(--ink);
+  padding: 13px 26px; cursor: pointer; transition: border-color 0.15s, opacity 0.15s;
 }
 button:hover { border-color: var(--ink); }
 button.primary { background: var(--ink); border-color: var(--ink); color: var(--bg); }
 button.primary:hover { opacity: 0.86; }
-button.text { border: 0; padding: 0; border-radius: 0; font-size: 14px; text-decoration: underline; text-underline-offset: 3px; }
+button.text { border: 0; padding: 0; border-radius: 0; font-size: 15px; color: var(--muted); text-decoration: underline; text-underline-offset: 3px; }
+button.text:hover { color: var(--ink); }
 button:disabled { opacity: 0.45; cursor: default; }
 button:focus-visible, .text-edit:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
-.actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.actions { display: flex; flex-wrap: wrap; gap: 14px 18px; align-items: center; margin-top: 32px; }
 
-/* ready */
-#start-form { margin-top: 56px; display: flex; flex-direction: column; gap: 6px; }
-#start-form .actions { margin-top: 28px; }
-.steps {
-  list-style: none; margin: 72px 0 0; padding: 0;
-  display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px;
-  counter-reset: step;
-}
-.steps li { counter-increment: step; border-top: 1px solid var(--line); padding-top: 18px; min-width: 0; }
-.steps li::before { content: counter(step); font: 400 30px/1 var(--display); color: var(--muted); display: block; margin-bottom: 14px; }
-.steps p { margin: 6px 0 0; font-size: 15px; line-height: 1.5; color: var(--muted); }
-@media (max-width: 600px) { .steps { grid-template-columns: 1fr; gap: 0; } .steps li { padding-bottom: 22px; } }
-.foot { margin-top: 56px; display: flex; flex-direction: column; gap: 6px; }
-details summary { cursor: pointer; font-size: 14px; color: var(--muted); width: fit-content; }
-details p { margin: 10px 0 0; font-size: 14px; color: var(--muted); max-width: 40em; }
+/* right-hand panels */
+.points { list-style: none; margin: 0; padding: 0; counter-reset: pt; }
+.points li { border-top: 1px solid var(--line); padding: 16px 0 18px; display: grid; grid-template-columns: 34px minmax(0, 1fr); }
+.points li:last-child { border-bottom: 1px solid var(--line); }
+.points li::before { counter-increment: pt; content: counter(pt); font: 400 24px/1.1 var(--display); color: var(--muted); }
+.points p { margin: 3px 0 0; font-size: 15px; color: var(--muted); }
+.proof { border-top: 1px solid var(--line); padding-top: 20px; display: flex; flex-direction: column; gap: 14px; min-height: 240px; }
+.proof .wait { color: var(--muted); font-size: 16px; margin: 0; }
+.ok { display: flex; align-items: center; gap: 10px; font-size: 19px; font-weight: 500; margin: 0; }
+.ok::before { content: "\2713"; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 14px; flex: 0 0 auto; }
+#screen-preview { width: 100%; max-height: 300px; object-fit: contain; object-position: left top; border: 1px solid var(--line); border-radius: 6px; }
+.heard { font: italic 400 30px/1.25 var(--display); margin: 0; overflow-wrap: anywhere; }
+details summary { cursor: pointer; font-size: 14px; color: var(--muted); width: fit-content; margin-top: 22px; }
+details p { margin: 10px 0 0; font-size: 14px; color: var(--muted); max-width: 36em; }
+#task-form { margin-top: 28px; }
 
-/* live */
+/* recording */
 .status { display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--rec); }
 .dot { width: 9px; height: 9px; border-radius: 50%; background: currentColor; }
 .is-live .dot { animation: pulse 1.6s ease-in-out infinite; }
 .is-paused .status { color: var(--warn); }
 @keyframes pulse { 50% { opacity: 0.2; } }
 @media (prefers-reduced-motion: reduce) { .is-live .dot { animation: none; } * { transition: none !important; } }
-.clock { font: 400 clamp(44px, 9vw, 68px)/1.02 var(--display); margin-top: 18px; letter-spacing: -0.01em; }
-#counts { margin-top: 10px; }
-#view-live .actions { margin-top: 32px; }
-.hint { font-size: 15px; color: var(--muted); margin: 24px 0 0; max-width: 36em; }
+.clock { font: 400 clamp(44px, 6vw, 68px)/1.02 var(--display); margin-top: 16px; letter-spacing: -0.01em; }
+#counts { margin-top: 8px; }
+.remind { list-style: none; margin: 28px 0 0; padding: 0; font-size: 15px; color: var(--muted); display: flex; flex-direction: column; gap: 6px; max-width: 30em; }
+.remind strong { color: var(--ink); font-weight: 500; }
 
 /* words */
-#words { margin-top: 56px; border-top: 1px solid var(--line); padding-top: 22px; }
+.words { border-top: 1px solid var(--line); padding-top: 18px; }
 .words-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; }
 .mic { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--muted); }
 .mic i { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); display: block; }
 .mic.on i { background: var(--accent); }
 .mic.bad { color: var(--warn); }
 .mic.bad i { background: var(--warn); }
-#mic-help { margin-top: 8px; color: var(--warn); max-width: 40em; }
+#mic-help { margin-top: 8px; color: var(--warn); }
 #words-tip { margin-top: 4px; }
-#lines { margin-top: 18px; display: flex; flex-direction: column; }
-.is-live #lines, .is-paused #lines { max-height: 44vh; overflow-y: auto; }
+#lines { margin-top: 12px; display: flex; flex-direction: column; max-height: max(180px, calc(100vh - 330px)); overflow-y: auto; }
 .line { display: flex; align-items: baseline; gap: 14px; padding: 9px 0; border-bottom: 1px solid var(--line); }
 .line time { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; flex: 0 0 auto; min-width: 40px; }
 .text-edit { flex: 1 1 auto; min-width: 0; outline: none; border-radius: 4px; padding: 2px 6px; margin: -2px -6px; overflow-wrap: anywhere; cursor: text; }
 .text-edit:hover, .text-edit:focus { background: var(--soft); }
-.line .x { border: 0; padding: 0 2px; font-size: 20px; line-height: 1; color: var(--muted); border-radius: 4px; opacity: 0.55; flex: 0 0 auto; }
+.line .x { border: 0; padding: 0 4px; font-size: 20px; line-height: 1; color: var(--muted); border-radius: 4px; opacity: 0.55; flex: 0 0 auto; }
 .line .x:hover, .line .x:focus-visible { opacity: 1; color: var(--rec); }
 .empty, .interim { font-size: 16px; color: var(--muted); margin: 0; padding: 9px 0; }
 .interim { font-style: italic; padding-left: 54px; }
-#note-input { font-size: 17px; margin-top: 6px; }
+#note-input { font-size: 17px; margin-top: 4px; }
 
 /* done */
-#view-done { margin-top: 48px; gap: 30px; }
-#view-done .actions { margin-top: 10px; }
-#save-msg { min-height: 1.5em; }
+.fields { display: flex; flex-direction: column; gap: 22px; margin-top: 28px; }
+#save-msg { margin-top: 16px; min-height: 1.5em; font-size: 15px; color: var(--ink); max-width: 32em; }
+#save-msg b { font-weight: 600; }
 </style>
 </head>
 <body>
 <main id="app">
-  <div class="brand"><i></i>The Ivy Path</div>
+  <div class="top">
+    <div class="brand"><i></i>The Ivy Path</div>
+    <div class="progress" id="progress"><span id="progress-text">Step 1 of 4</span><ol aria-hidden="true"><li></li><li></li><li></li><li></li></ol></div>
+  </div>
 
-  <!-- READY -->
-  <section id="view-ready">
-    <h1>Show us how you&nbsp;work.</h1>
-    <p class="lede">Do one task the way you always do, and talk us through it. We turn what you show us into a plan to take it off your plate.</p>
-    <form id="start-form" autocomplete="off">
-      <label for="task-name">What task are you about to do?</label>
-      <input type="text" id="task-name" placeholder="Entering vendor invoices">
-      <div class="actions"><button class="primary" id="btn-start" type="submit">Start capture</button></div>
-    </form>
-    <p class="error" id="start-error" hidden></p>
-    <ol class="steps">
-      <li><h3>Share your screen</h3><p>Choose Entire Screen, then Share. Allow the microphone when your browser asks.</p></li>
-      <li><h3>Work and talk</h3><p>Leave this tab open and work in a new one. Explain each step as if you were training a new hire.</p></li>
-      <li><h3>Finish and send</h3><p>Come back here, click Finish, and send us the one file it saves.</p></li>
-    </ol>
-    <div class="foot">
-      <p class="meta">Private by design. Nothing leaves your computer until you send the file.</p>
-      <p class="meta">Works in Chrome or Edge on a computer.</p>
+  <!-- 1. INTRO -->
+  <section class="split" id="v-intro">
+    <div class="col">
+      <h1>Show us how you&nbsp;work.</h1>
+      <p class="lede">Do one task the way you always do, and talk us through it. We turn what you show us into a plan to take it off your plate.</p>
+      <div class="actions">
+        <button class="primary" id="btn-agree" type="button">I agree. Set me up</button>
+        <span class="meta">Takes about a minute. Use Chrome or Edge on a computer.</span>
+      </div>
+      <p class="note bad" id="intro-error" hidden></p>
+    </div>
+    <div class="col">
+      <ol class="points">
+        <li><div><h3>We take pictures of your screen</h3><p>Only while you record, and only when something changes.</p></div></li>
+        <li><div><h3>We write down what you say</h3><p>You see every line and can fix or remove it.</p></div></li>
+        <li><div><h3>You stay in control</h3><p>Pause any time, like before a password.</p></div></li>
+        <li><div><h3>Nothing is sent for you</h3><p>It all stays on your computer until you send us the file.</p></div></li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- 2. SCREEN -->
+  <section class="split" id="v-screen" hidden>
+    <div class="col">
+      <h2>First, share your screen.</h2>
+      <p class="lede">Click the button. In the window that opens, choose <strong>Entire Screen</strong>, click the picture of your screen, then click <strong>Share</strong>.</p>
+      <div class="actions">
+        <button class="primary" id="btn-share" type="button">Share my screen</button>
+        <button class="primary" id="btn-screen-next" type="button" hidden>Next</button>
+      </div>
+      <p class="note" id="screen-note" hidden></p>
       <details>
         <summary>On a Mac and the Share button does nothing?</summary>
         <p>Your Mac has to allow your browser to record the screen the first time. Open System Settings, then Privacy and Security, then Screen and System Audio Recording (called Screen Recording on older Macs). Turn it on for your browser, reopen the browser, and come back to this page.</p>
       </details>
     </div>
+    <div class="col">
+      <div class="proof">
+        <p class="wait" id="screen-wait">A picture of your screen will show here once it's shared.</p>
+        <p class="ok" id="screen-ok" hidden>Good. We can see your screen.</p>
+        <img id="screen-preview" alt="A picture of your shared screen" hidden>
+      </div>
+    </div>
   </section>
 
-  <!-- LIVE -->
-  <section id="view-live" hidden>
-    <div class="status"><span class="dot"></span><span id="status-text">Recording</span></div>
-    <div class="clock" id="clock">Under a minute</div>
-    <p class="meta" id="counts"></p>
-    <div class="actions">
-      <button id="btn-pause" type="button">Pause</button>
-      <button class="primary" id="btn-stop" type="button">Finish</button>
+  <!-- 3. MICROPHONE -->
+  <section class="split" id="v-mic" hidden>
+    <div class="col">
+      <h2>Now, say hello.</h2>
+      <p class="lede">Click the button, allow the microphone, and say a few words out loud. Try "Testing, one, two, three."</p>
+      <div class="actions">
+        <button class="primary" id="btn-mic-test" type="button">Test my microphone</button>
+        <button class="primary" id="btn-mic-next" type="button" hidden>Next</button>
+        <button class="text" id="btn-mic-skip" type="button">Skip. I'll type my notes instead</button>
+      </div>
+      <p class="note warn" id="mic-note" hidden></p>
     </div>
-    <p class="hint">Work in another tab or app. Come back here to pause before anything private, fix a line, or finish.</p>
+    <div class="col">
+      <div class="proof">
+        <p class="wait" id="mic-wait">Your words will show here.</p>
+        <p class="ok" id="mic-ok" hidden>Good. We can hear you.</p>
+        <p class="heard" id="mic-heard" hidden></p>
+        <p class="meta" id="mic-label" hidden></p>
+      </div>
+    </div>
   </section>
 
-  <!-- DONE (top) -->
-  <section id="view-done-head" hidden>
-    <h2>Nicely done.</h2>
-    <p class="lede" id="summary"></p>
+  <!-- 4. TASK -->
+  <section class="split" id="v-task" hidden>
+    <div class="col">
+      <h2>What are you about to do?</h2>
+      <form id="task-form" autocomplete="off">
+        <label for="task-name">Name the task</label>
+        <input type="text" id="task-name" placeholder="Entering vendor invoices">
+        <div class="actions"><button class="primary" type="submit">Start recording</button></div>
+      </form>
+    </div>
+    <div class="col">
+      <ol class="points">
+        <li><div><h3>Leave this tab open</h3><p>Do your work in a new tab or another app.</p></div></li>
+        <li><div><h3>Talk as you go</h3><p>Explain each step as if you were training a new hire.</p></div></li>
+        <li><div><h3>Pause for anything private</h3><p>Come back to this tab and click Pause before a password or personal details.</p></div></li>
+        <li><div><h3>Finish here</h3><p>Come back to this tab and click Finish when the task is done.</p></div></li>
+      </ol>
+    </div>
   </section>
 
-  <!-- WORDS: live while recording, still editable after -->
-  <section id="words" hidden>
-    <div class="words-head">
-      <h3>Your words</h3>
-      <div class="mic" id="mic"><i></i><span id="mic-text">Starting microphone</span><button class="text" id="btn-mic" type="button" hidden>Reconnect microphone</button></div>
+  <!-- RECORDING + DONE -->
+  <section class="split" id="v-session" hidden>
+    <div class="col" id="live-col">
+      <div class="status"><span class="dot"></span><span id="status-text">Recording</span></div>
+      <div class="clock" id="clock">Under a minute</div>
+      <p class="meta" id="counts"></p>
+      <div class="actions">
+        <button id="btn-pause" type="button">Pause</button>
+        <button class="primary" id="btn-stop" type="button">Finish</button>
+      </div>
+      <ul class="remind">
+        <li><strong>Pause</strong> before a password or anything private.</li>
+        <li>Do your work in another tab or app, and keep talking.</li>
+        <li><strong>Finish</strong> when the task is done.</li>
+      </ul>
     </div>
-    <p class="meta" id="mic-help" hidden></p>
-    <p class="meta" id="words-tip">Click any line to change it, even while you are still talking.</p>
-    <div id="lines"><p class="empty" id="lines-empty">Start talking. Your words appear here.</p></div>
-    <p class="interim" id="interim" hidden></p>
-    <input type="text" id="note-input" placeholder="Or type a line and press Enter" aria-label="Type a line" autocomplete="off">
-  </section>
-
-  <!-- DONE (questions) -->
-  <section id="view-done" hidden>
-    <div>
-      <label for="q-often">How often do you do this task?</label>
-      <input type="text" id="q-often" placeholder="Every morning, about 15 times a week" autocomplete="off">
+    <div class="col" id="done-col" hidden>
+      <h2>Nicely done.</h2>
+      <p class="lede" id="summary"></p>
+      <div class="fields">
+        <div><label for="q-often">How often do you do this task?</label><input type="text" id="q-often" placeholder="Every morning, about 15 times a week" autocomplete="off"></div>
+        <div><label for="q-decide">What do you have to decide or check along the way?</label><textarea id="q-decide" rows="1" placeholder="If the PO number is missing, I email the vendor first"></textarea></div>
+        <div><label for="q-wrong">What goes wrong, and what happens when it does?</label><textarea id="q-wrong" rows="1" placeholder="Duplicate invoices get paid twice if I miss them"></textarea></div>
+      </div>
+      <div class="actions">
+        <button class="primary" id="btn-save" type="button">Save my capture file</button>
+        <button id="btn-again" type="button">Capture another task</button>
+      </div>
+      <p id="save-msg"></p>
     </div>
-    <div>
-      <label for="q-decide">What do you have to decide or check along the way?</label>
-      <textarea id="q-decide" rows="1" placeholder="If the PO number is missing, I email the vendor first"></textarea>
+    <div class="col words">
+      <div class="words-head">
+        <h3>Your words</h3>
+        <div class="mic" id="mic"><i></i><span id="mic-text">Starting microphone</span><button class="text" id="btn-mic" type="button" hidden>Reconnect microphone</button></div>
+      </div>
+      <p class="meta" id="mic-help" hidden></p>
+      <p class="meta" id="words-tip"></p>
+      <div id="lines"></div>
+      <p class="interim" id="interim" hidden></p>
+      <input type="text" id="note-input" placeholder="Or type a line and press Enter" aria-label="Type a line" autocomplete="off">
     </div>
-    <div>
-      <label for="q-wrong">What goes wrong, and what happens when it does?</label>
-      <textarea id="q-wrong" rows="1" placeholder="Duplicate invoices get paid twice if I miss them"></textarea>
-    </div>
-    <div class="actions">
-      <button class="primary" id="btn-save" type="button">Save my capture file</button>
-      <button id="btn-again" type="button">Capture another task</button>
-    </div>
-    <p class="meta" id="save-msg"></p>
   </section>
 </main>
 
@@ -365,11 +401,14 @@ const CELL_W = 96, CELL_H = 54, CELL_DIFF = 24, CELLS_CHANGED = 6;
 const MAX_SHOT_W = 1600, JPEG_Q = 0.6;
 const JOIN_MS = 6000;       // spoken fragments closer than this become one line
 const LINE_MAX = 240;
+const STEPS = ["intro", "screen", "mic", "task"];
 
-let state = "ready";        // ready | live | paused | done
+let state = "setup";        // setup | live | paused | done
+let step = "intro";
 let session = null;
-let screenStream = null, track = null, grabber = null;
-let sr = null, srRunning = false, srErr = "", srFails = 0, srDownSince = 0, micState = "off";
+let screenStream = null, track = null, grabber = null, screenOk = false;
+let sr = null, srRunning = false, srErr = "", srFails = 0, srDownSince = 0;
+let micOk = false, micTesting = false, micTimer = null;
 let lastSay = null;
 let ticker = null, uiTimer = null, busy = false;
 let segStart = 0, lastCells = null, shots = [], saved = true;
@@ -379,22 +418,48 @@ const small = document.createElement("canvas"); small.width = CELL_W; small.heig
 const smallCtx = small.getContext("2d", { willReadFrequently: true });
 const big = document.createElement("canvas");
 
+function fileName(task, d) {
+  const pad = (n) => String(n).padStart(2, "0");
+  const clean = (task || "").replace(/[^A-Za-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 40) || "task";
+  return "Task Capture " + d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()) + " " + pad(d.getHours()) + "." + pad(d.getMinutes()) + " - " + clean + ".zip";
+}
+
 function render() {
+  const setup = state === "setup";
   const live = state === "live" || state === "paused";
-  $("view-ready").hidden = state !== "ready";
-  $("view-live").hidden = !live;
-  $("view-done-head").hidden = state !== "done";
-  $("words").hidden = state === "ready";
-  $("view-done").hidden = state !== "done";
-  $("mic").hidden = !live;
+  for (const s of STEPS) $("v-" + s).hidden = !(setup && step === s);
+  $("v-session").hidden = setup;
+  $("live-col").hidden = !live;
+  $("done-col").hidden = state !== "done";
+  $("progress").hidden = !setup;
+  const n = STEPS.indexOf(step) + 1;
+  $("progress-text").textContent = "Step " + n + " of 4";
+  document.querySelectorAll("#progress li").forEach((li, i) => li.classList.toggle("on", i < n));
   $("app").className = state === "live" ? "is-live" : state === "paused" ? "is-paused" : "";
   $("status-text").textContent = state === "paused" ? "Paused. Nothing is being captured." : "Recording";
   $("btn-pause").textContent = state === "paused" ? "Resume" : "Pause";
+  $("mic").hidden = !live;
   $("words-tip").textContent = state === "done"
     ? "Last look. Fix anything that is wrong and remove anything that should not be included."
     : "Click any line to change it, even while you are still talking.";
   if (state === "done") { $("interim").hidden = true; $("mic-help").hidden = true; }
+  // screen step
+  $("screen-wait").hidden = screenOk;
+  $("screen-ok").hidden = !screenOk;
+  $("screen-preview").hidden = !screenOk;
+  $("btn-screen-next").hidden = !screenOk;
+  $("btn-share").hidden = screenOk && $("screen-note").hidden;
+  $("btn-share").className = screenOk ? "" : "primary";
+  $("btn-share").textContent = screenOk ? "Share again" : "Share my screen";
+  // mic step
+  $("mic-ok").hidden = !micOk;
+  $("btn-mic-next").hidden = !micOk;
+  $("btn-mic-test").hidden = micOk;
+  $("btn-mic-skip").hidden = micOk;
+  $("btn-mic-test").disabled = micTesting;
+  $("btn-mic-test").textContent = micTesting ? "Listening…" : "Test my microphone";
 }
+function go(s) { step = s; render(); window.scrollTo(0, 0); }
 function elapsed() {
   return session.activeMs + (state === "live" ? performance.now() - segStart : 0);
 }
@@ -403,58 +468,126 @@ function addEvent(type, extra) {
   session.events.push(e);
   return e;
 }
+function note(id, text, cls) {
+  const el = $(id);
+  el.textContent = text || "";
+  el.hidden = !text;
+  if (cls) el.className = "note " + cls;
+}
 
-async function start(ev) {
-  if (ev) ev.preventDefault();
-  const err = $("start-error");
-  err.hidden = true;
+// ---------- step 1: agree ----------
+function agree() {
   if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
-    err.textContent = "This browser can't record the screen. Open this page in Chrome or Edge on a computer.";
-    err.hidden = false;
+    note("intro-error", "This browser can't record the screen. Open this page in Chrome or Edge on a computer.");
     return;
   }
+  go("screen");
+}
+
+// ---------- step 2: screen ----------
+function dropScreen() {
+  if (screenStream) screenStream.getTracks().forEach((t) => t.stop());
+  screenStream = null; track = null; grabber = null; screenOk = false;
+  video.srcObject = null;
+}
+async function shareScreen() {
+  note("screen-note", "");
+  dropScreen();
   try {
     screenStream = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 5 }, audio: false });
   } catch (e) {
-    err.textContent = "Screen sharing wasn't turned on. Click Start capture again, choose Entire Screen, then Share.";
-    err.hidden = false;
+    note("screen-note", "Screen sharing wasn't turned on. Click Share my screen, choose Entire Screen, then click Share.", "bad");
+    render();
     return;
   }
-
-  session = {
-    task: $("task-name").value.trim() || "Untitled task",
-    startedAt: new Date().toLocaleString(),
-    stamp: new Date(),
-    activeMs: 0, events: [], answers: {}, speechOk: false,
-  };
-  shots = []; lastCells = null; lastSay = null; saved = false;
-  $("lines").innerHTML = '<p class="empty" id="lines-empty">Start talking. Your words appear here.</p>';
-
   track = screenStream.getVideoTracks()[0];
-  track.addEventListener("ended", () => { if (state === "live" || state === "paused") stop(); });
+  const mine = screenStream;
+  track.addEventListener("ended", () => {
+    if (screenStream !== mine) return;
+    if (state === "live" || state === "paused") { stop(); return; }
+    if (state === "setup") {
+      dropScreen();
+      note("screen-note", "Screen sharing stopped. Share your screen again to continue.", "bad");
+      go("screen");
+    }
+  });
   grabber = (typeof ImageCapture !== "undefined") ? new ImageCapture(track) : null;
   video.srcObject = screenStream;
-  video.play().catch(() => {});
-
-  state = "live";
-  segStart = performance.now();
-  srFails = 0;
-  startSpeech();
-  render();
-  try {
-    const src = "setInterval(()=>postMessage(0)," + SAMPLE_MS + ")";
-    ticker = new Worker(URL.createObjectURL(new Blob([src], { type: "text/javascript" })));
-    ticker.onmessage = tick;
-  } catch (e) {
-    ticker = { id: setInterval(tick, SAMPLE_MS), terminate() { clearInterval(this.id); } };
+  try { await video.play(); } catch (e) {}
+  for (let i = 0; i < 20 && !video.videoWidth; i++) await new Promise((r) => setTimeout(r, 100));
+  if (video.videoWidth) {
+    const c = document.createElement("canvas");
+    const k = Math.min(1, 900 / video.videoWidth);
+    c.width = Math.round(video.videoWidth * k); c.height = Math.round(video.videoHeight * k);
+    c.getContext("2d").drawImage(video, 0, 0, c.width, c.height);
+    $("screen-preview").src = c.toDataURL("image/jpeg", 0.7);
   }
-  uiTimer = setInterval(renderClock, 5000);
-  renderClock();
+  screenOk = true;
+  const surface = (track.getSettings && track.getSettings().displaySurface) || "";
+  if (surface && surface !== "monitor") {
+    note("screen-note", "You shared one window or tab, so that is all we will see. To capture everything, click Share again and choose Entire Screen.", "warn");
+  }
+  render();
 }
 
-// ---------- microphone ----------
+// ---------- step 3: microphone test ----------
+async function testMic() {
+  note("mic-note", "");
+  $("mic-heard").hidden = true;
+  $("mic-label").hidden = true;
+  micOk = false;
+  let label = "";
+  try {
+    const s = await navigator.mediaDevices.getUserMedia({ audio: true });
+    label = (s.getAudioTracks()[0] || {}).label || "";
+    s.getTracks().forEach((t) => t.stop());
+  } catch (e) {
+    note("mic-note", "Your browser is blocking the microphone for this page. Click the icon at the left of the address bar, allow the microphone, then test again.", "warn");
+    render();
+    return;
+  }
+  if (label) {
+    $("mic-label").textContent = "Listening on: " + label.replace(/^Default - /, "");
+    $("mic-label").hidden = false;
+  }
+  if (!(window.SpeechRecognition || window.webkitSpeechRecognition)) {
+    note("mic-note", "This browser can't turn speech into text. You can still continue and type your notes.", "warn");
+    render();
+    return;
+  }
+  micTesting = true;
+  $("mic-wait").textContent = "Go ahead, say a few words.";
+  srFails = 0;
+  startSpeech();
+  clearTimeout(micTimer);
+  micTimer = setTimeout(() => {
+    if (!micTesting) return;
+    const phone = /iphone|ipad|airpods|headset|hands-free/i.test(label);
+    note("mic-note", phone
+      ? "We can't hear you yet. Your computer is listening on a phone or headset. Open your computer's sound settings, set the input to its built-in microphone, then test again."
+      : "We can't hear you yet. Speak a little louder, or check that the right microphone is chosen in your computer's sound settings, then test again.", "warn");
+    micTesting = false;
+    stopSpeech();
+    render();
+  }, 12000);
+  render();
+}
+function testHeard(text, final) {
+  $("mic-wait").hidden = true;
+  $("mic-heard").textContent = "“" + text + "”";
+  $("mic-heard").hidden = false;
+  if (!micOk) { micOk = true; note("mic-note", ""); render(); }
+  if (final) { micTesting = false; clearTimeout(micTimer); stopSpeech(); render(); }
+}
+function leaveMic() {
+  micTesting = false; clearTimeout(micTimer); stopSpeech();
+  go("task");
+  $("task-name").focus();
+}
+
+// ---------- speech ----------
+function wantSpeech() { return state === "live" || micTesting; }
 function setMic(s) {
-  micState = s;
   const text = {
     starting: "Starting microphone", on: "Listening", off: "Microphone off",
     stopped: "Microphone stopped", blocked: "Microphone blocked", none: "Speech to text unavailable",
@@ -468,15 +601,13 @@ function setMic(s) {
     none: "This browser can't turn speech into text. Type your lines below instead.",
   }[s];
   $("mic-help").textContent = help || "";
-  $("mic-help").hidden = !help || state === "done";
+  $("mic-help").hidden = !help || state !== "live";
 }
-
 function stopSpeech() {
   const old = sr; sr = null; srRunning = false;
-  if (old) { old.onend = null; old.onerror = null; old.onresult = null; try { old.abort(); } catch (e) {} }
+  if (old) { old.onend = null; old.onerror = null; old.onresult = null; old.onstart = null; try { old.abort(); } catch (e) {} }
   showInterim("");
 }
-
 function startSpeech() {
   stopSpeech();
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -495,29 +626,33 @@ function startSpeech() {
       const res = e.results[i];
       const text = res[0].transcript.trim();
       if (!text) continue;
+      if (micTesting) { testHeard(text, res.isFinal); if (sr !== r) return; continue; }
       if (res.isFinal) heardLine(text); else interim += text + " ";
     }
-    showInterim(interim);
+    if (state === "live") showInterim(interim);
   };
   r.onerror = (e) => { if (sr === r) srErr = e.error; };
   r.onend = () => {
     if (sr !== r) return;
     srRunning = false;
     showInterim("");
-    if (state !== "live") return;
-    if (srErr === "not-allowed" || srErr === "service-not-allowed") { sr = null; setMic("blocked"); return; }
+    if (!wantSpeech()) return;
+    if (srErr === "not-allowed" || srErr === "service-not-allowed") {
+      sr = null; setMic("blocked");
+      if (micTesting) { micTesting = false; clearTimeout(micTimer); note("mic-note", "Your browser is blocking the microphone for this page. Click the icon at the left of the address bar, allow the microphone, then test again.", "warn"); render(); }
+      return;
+    }
     if (srErr && srErr !== "no-speech") srFails++;
     if (srFails > 5) { sr = null; setMic("stopped"); return; }
     if (!srDownSince) srDownSince = performance.now();
     setTimeout(() => {
-      if (sr !== r || state !== "live") return;
+      if (sr !== r || !wantSpeech()) return;
       try { r.start(); } catch (e) { startSpeech(); }
     }, 300);
   };
   setMic("starting");
   try { r.start(); } catch (e) { sr = null; setMic("stopped"); }
 }
-
 function micWatch() {
   // Runs on every tick, including while this tab is in the background.
   if (state !== "live" || !sr || srRunning) return;
@@ -526,6 +661,9 @@ function micWatch() {
 }
 
 // ---------- words ----------
+function emptyLines() {
+  $("lines").innerHTML = '<p class="empty" id="lines-empty">Start talking. Your words appear here.</p>';
+}
 function addLine(ev) {
   const empty = $("lines-empty"); if (empty) empty.remove();
   const row = document.createElement("div"); row.className = "line";
@@ -559,6 +697,7 @@ function scrollWords() {
   if (!box.contains(document.activeElement)) box.scrollTop = box.scrollHeight;
 }
 function heardLine(text) {
+  if (state !== "live") return;
   session.speechOk = true;
   const now = elapsed();
   const p = lastSay;
@@ -575,8 +714,8 @@ function heardLine(text) {
 function showInterim(text) {
   const el = $("interim");
   el.textContent = text;
-  el.hidden = !text || state === "done";
-  if (text) { const empty = $("lines-empty"); if (empty) empty.remove(); }
+  el.hidden = !text || state !== "live";
+  if (text && state === "live") { const empty = $("lines-empty"); if (empty) empty.remove(); }
 }
 function addNote() {
   const el = $("note-input");
@@ -587,12 +726,43 @@ function addNote() {
   el.value = "";
 }
 
-// ---------- screenshots ----------
+// ---------- step 4: record ----------
+function startRecording(ev) {
+  if (ev) ev.preventDefault();
+  if (!screenStream || !track || track.readyState !== "live") {
+    dropScreen();
+    note("screen-note", "Screen sharing stopped. Share your screen again to continue.", "bad");
+    go("screen");
+    return;
+  }
+  session = {
+    task: $("task-name").value.trim() || "Untitled task",
+    startedAt: new Date().toLocaleString(),
+    activeMs: 0, events: [], answers: {}, speechOk: false,
+  };
+  shots = []; lastCells = null; lastSay = null; saved = false;
+  emptyLines();
+  state = "live";
+  segStart = performance.now();
+  srFails = 0;
+  startSpeech();
+  render();
+  try {
+    const src = "setInterval(()=>postMessage(0)," + SAMPLE_MS + ")";
+    ticker = new Worker(URL.createObjectURL(new Blob([src], { type: "text/javascript" })));
+    ticker.onmessage = tick;
+  } catch (e) {
+    ticker = { id: setInterval(tick, SAMPLE_MS), terminate() { clearInterval(this.id); } };
+  }
+  uiTimer = setInterval(renderClock, 5000);
+  renderClock();
+  window.scrollTo(0, 0);
+}
+
 function tick() { micWatch(); sample(); }
 
 async function sample() {
-  // Skip while the person is on this page, so the capture is of their work and not of the recorder.
-  if (state !== "live" || busy || document.hasFocus()) return;
+  if (state !== "live" || busy) return;
   busy = true;
   try {
     let frame = null;
@@ -620,7 +790,6 @@ async function sample() {
     const file = "screenshots/" + String(shots.length + 1).padStart(4, "0") + ".jpg";
     shots.push({ name: file, blob });
     addEvent("shot", { file });
-    renderClock();
   } finally { busy = false; }
 }
 
@@ -661,11 +830,10 @@ function stop() {
   clearInterval(uiTimer);
   if (ticker) { ticker.terminate(); ticker = null; }
   stopSpeech();
-  if (screenStream) screenStream.getTracks().forEach((t) => t.stop());
-  video.srcObject = null;
+  dropScreen();
   $("summary").textContent = shots.length
     ? minutesText(session.activeMs) + " and " + shotsText() + " of “" + session.task + "”. Check your words, answer three quick questions, and save."
-    : "No screenshots were taken. They are only taken while you work in another tab or app with Entire Screen shared. You can start over below.";
+    : "No screenshots were taken, so there is nothing to save yet. Click Capture another task to try again.";
   $("save-msg").textContent = "";
   render();
   window.scrollTo(0, 0);
@@ -679,14 +847,16 @@ async function save() {
     session.answers = { often: $("q-often").value, decide: $("q-decide").value, wrong: $("q-wrong").value };
     const files = [{ name: "notes.md", blob: new Blob([buildNotes(session)], { type: "text/markdown" }) }, ...shots];
     const zip = await buildZip(files);
-    const d = session.stamp, pad = (n) => String(n).padStart(2, "0");
-    const name = "capture-" + slug(session.task) + "-" + d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) + "-" + pad(d.getHours()) + pad(d.getMinutes()) + ".zip";
+    const name = fileName(session.task, new Date());
     const a = document.createElement("a");
     a.href = URL.createObjectURL(zip);
     a.download = name;
     document.body.appendChild(a); a.click(); a.remove();
     saved = true;
-    $("save-msg").textContent = "Saved to your Downloads folder as " + name + ". Send that file to the person who gave you this link.";
+    const msg = $("save-msg");
+    msg.textContent = "Saved to your Downloads folder as ";
+    const b = document.createElement("b"); b.textContent = name;
+    msg.append(b, ". The date and time are in the name, so the newest file is easy to find. Send that file to the person who gave you this link.");
   } catch (e) {
     $("save-msg").textContent = "Your file couldn't be built. Click Save my capture file to try again.";
   } finally { btn.disabled = false; }
@@ -701,13 +871,18 @@ function again() {
   delete $("btn-again").dataset.armed;
   $("btn-again").textContent = "Capture another task";
   for (const id of ["task-name", "q-often", "q-decide", "q-wrong", "note-input"]) $(id).value = "";
-  session = null; shots = []; saved = true; state = "ready";
-  render();
-  window.scrollTo(0, 0);
-  $("task-name").focus();
+  session = null; shots = []; saved = true; state = "setup";
+  note("screen-note", "");
+  go("screen");
 }
 
-$("start-form").addEventListener("submit", start);
+$("btn-agree").addEventListener("click", agree);
+$("btn-share").addEventListener("click", shareScreen);
+$("btn-screen-next").addEventListener("click", () => { if (micOk) { go("task"); $("task-name").focus(); } else go("mic"); });
+$("btn-mic-test").addEventListener("click", testMic);
+$("btn-mic-next").addEventListener("click", leaveMic);
+$("btn-mic-skip").addEventListener("click", leaveMic);
+$("task-form").addEventListener("submit", startRecording);
 $("btn-pause").addEventListener("click", togglePause);
 $("btn-stop").addEventListener("click", stop);
 $("btn-mic").addEventListener("click", () => { srFails = 0; startSpeech(); });
@@ -717,6 +892,7 @@ $("btn-again").addEventListener("click", again);
 window.addEventListener("beforeunload", (e) => {
   if (state === "live" || state === "paused" || !saved) { e.preventDefault(); e.returnValue = ""; }
 });
+render();
 </script>
 </body>
 </html>
