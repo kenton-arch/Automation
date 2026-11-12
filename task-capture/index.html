@@ -217,6 +217,7 @@ dialog#viewer .actions { margin-top: 16px; justify-content: space-between; }
         <label for="who-co">Company</label>
         <input type="text" id="who-co" placeholder="Lee Plumbing" autocomplete="organization">
       </form>
+      <p class="meta" id="acct-note" style="margin-top:14px" hidden></p>
       <p class="note bad" id="intro-error" hidden></p>
     </div>
     <div class="col">
@@ -225,7 +226,7 @@ dialog#viewer .actions { margin-top: 16px; justify-content: space-between; }
         <li><div><h3>Pictures of your whole screen</h3><p>While you record, we save a picture every few seconds when something changes. Close anything you don't want seen.</p></div></li>
         <li><div><h3>A written record of what you say</h3><p>Your browser turns your words into text. No sound recording is kept.</p></div></li>
         <li><div><h3>You decide what is included</h3><p>Pause any time. Fix or remove any line before you save.</p></div></li>
-        <li><div><h3>Nothing is sent for you</h3><p>It stays on this computer until you send us the file. We use it only to plan how to automate this task.</p></div></li>
+        <li><div><h3>You choose when to send it</h3><p>Nothing leaves this computer until you submit it. We use it only to plan your automation, and delete the pictures and words 14 days after your plan is ready.</p></div></li>
       </ol>
     </div>
   </section>
@@ -385,10 +386,10 @@ dialog#viewer .actions { margin-top: 16px; justify-content: space-between; }
   <section class="split" id="v-end" hidden>
     <div class="col">
       <h1>That's everything. Thank&nbsp;you.</h1>
-      <p class="lede">Screen sharing and the microphone are off. Send us the files listed here from your Downloads folder, then you can close this tab.</p>
+      <p class="lede" id="end-lede">Screen sharing and the microphone are off. Send us the files listed here from your Downloads folder, then you can close this tab.</p>
     </div>
     <div class="col">
-      <h3 class="agree-title">Your capture files</h3>
+      <h3 class="agree-title" id="end-title">Your capture files</h3>
       <ol class="points" id="end-list"></ol>
     </div>
   </section>
@@ -413,6 +414,8 @@ dialog#viewer .actions { margin-top: 16px; justify-content: space-between; }
 </dialog>
 <svg id="vine" aria-hidden="true"></svg>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="../shared/ivy.js"></script>
 <script>
 /*PURE-START*/
 const CRC_TABLE = (() => {
@@ -555,6 +558,8 @@ let lastSay = null;
 let ticker = null, uiTimer = null, busy = false;
 let segStart = 0, lastCells = null, shots = [], saved = true, savedName = "", saving = false, armed = false;
 let savedFiles = [], viewing = -1, doneStep = "review", summaryText = "", who = null;
+let acct = null, submitted = false, sendError = "";
+let redoId = new URLSearchParams(location.search).get("redo");
 let micStream = null, audioCtx = null, analyser = null, levelBuf = null, levelRaf = 0, lastLoud = 0;
 let lastVoice = 0, quietShots = 0;
 const TITLE = document.title;
@@ -627,11 +632,14 @@ function nav() {
     else { back = "Back"; next = "Start recording"; }
   } else if (state === "done") {
     if (!shots.length) { next = "Start over"; }
-    else if (saved) { next = "Capture another task"; alt = "I'm done for today"; back = "Save the file again"; }
+    else if (saved) { next = "Capture another task"; alt = "I'm done for today"; back = acct ? "Save a copy to my computer" : "Save the file again"; }
     else {
       alt = armed ? "Click again to discard" : "Discard and start over";
       if (doneStep === "review") { next = "Next"; msg = "Your screen stays shared so your next task starts in one click."; }
-      else { next = "Save my capture file"; back = "Back"; off = saving; msg = saving ? "Building your file\u2026" : ""; }
+      else {
+        next = acct ? "Submit my capture" : "Save my capture file"; back = "Back"; off = saving;
+        msg = saving ? (acct ? "Sending your capture. Keep this tab open\u2026" : "Building your file\u2026") : sendError;
+      }
     }
   } else if (state === "end") {
     next = "Capture another task";
@@ -643,6 +651,10 @@ function nav() {
   $("btn-next").textContent = next; $("btn-next").disabled = off;
   const m = $("nav-msg");
   m.textContent = msg;
+  if (state === "done" && saved && submitted) {
+    const a = document.createElement("a"); a.href = "../"; a.textContent = "your tasks page";
+    m.append("Submitted. Track it on ", a, ". ");
+  }
   if (state === "done" && saved && savedName) {
     const b = document.createElement("b"); b.textContent = savedName;
     m.append("Saved to your Downloads folder as ", b, ".");
@@ -659,6 +671,7 @@ function onNext() {
   } else if (state === "done") {
     if (saved || !shots.length) nextTask();
     else if (doneStep === "review") { doneStep = "questions"; render(); window.scrollTo(0, 0); }
+    else if (acct) submit();
     else save();
   } else if (state === "end") {
     state = "setup"; note("screen-note", ""); go("screen");
@@ -1249,14 +1262,47 @@ async function save() {
     a.href = URL.createObjectURL(zip);
     a.download = name;
     document.body.appendChild(a); a.click(); a.remove();
-    if (savedName) savedFiles.pop();
-    savedFiles.push({ task: session.task, name });
+    if (!submitted) {
+      if (savedName) savedFiles.pop();
+      savedFiles.push({ task: session.task, name });
+    }
     saved = true; savedName = name;
   } catch (e) {
     saving = false; render();
     $("nav-msg").textContent = "Your file couldn't be built. Click Save my capture file to try again.";
     $("nav-msg").hidden = false;
     return;
+  }
+  saving = false; render();
+}
+
+// Signed-in people send the capture straight to their tasks page.
+async function submit() {
+  if (saving) return;
+  saving = true; sendError = ""; render();
+  try {
+    session.answers = readAnswers();
+    const notes = buildNotes(session);
+    const kept = liveShots();
+    const zip = await buildZip([{ name: "notes.md", blob: new Blob([notes], { type: "text/markdown" }) }, ...kept.map((x) => ({ name: x.name, blob: x.blob }))]);
+    const path = acct.id + "/" + crypto.randomUUID() + ".zip";
+    const up = await IVY.sb.storage.from("captures").upload(path, zip, { contentType: "application/zip", upsert: false });
+    if (up.error) throw up.error;
+    const facts = { bytes: zip.size, ms: Math.round(session.activeMs), shots: kept.length };
+    const res = redoId
+      ? await IVY.sb.rpc("resubmit_task", { task_id: redoId, new_capture_path: path, new_notes_md: notes, new_answers: session.answers,
+          new_capture_bytes: facts.bytes, new_duration_ms: facts.ms, new_shot_count: facts.shots })
+      : await IVY.sb.from("tasks").insert({ title: session.task.slice(0, 200), notes_md: notes, answers: session.answers, capture_path: path,
+          capture_bytes: facts.bytes, duration_ms: facts.ms, shot_count: facts.shots });
+    if (res.error) throw res.error;
+    redoId = null;
+    submitted = true; saved = true;
+    savedFiles.push({ task: session.task, name: "Submitted to The Ivy Path" });
+  } catch (e) {
+    const big = /size|too large|exceed|413/i.test(String((e && e.message) || e));
+    sendError = big
+      ? "This capture is too large to send. Go Back, remove some pictures, and submit again."
+      : "Your capture couldn't be sent. Check your internet connection, then click Submit my capture again.";
   }
   saving = false; render();
 }
@@ -1272,7 +1318,7 @@ function discard() {
 function resetTask() {
   for (const id of ["task-name", "note-input"]) $(id).value = "";
   resetQuestions();
-  session = null; dropShots(); saved = true; savedName = ""; armed = false; state = "setup";
+  session = null; dropShots(); saved = true; savedName = ""; armed = false; submitted = false; sendError = ""; state = "setup";
   note("screen-note", ""); note("task-note", "");
 }
 function nextTask() {
@@ -1290,6 +1336,16 @@ function finishDay() {
     const li = document.createElement("li"), d = document.createElement("div"), h = document.createElement("h3"), p = document.createElement("p");
     h.textContent = f.task; p.textContent = f.name;
     d.append(h, p); li.appendChild(d); list.appendChild(li);
+  }
+  const sent = savedFiles.some((f) => f.name === "Submitted to The Ivy Path");
+  $("end-title").textContent = sent ? "What you captured" : "Your capture files";
+  const lede = $("end-lede");
+  lede.textContent = "";
+  if (sent) {
+    const a = document.createElement("a"); a.href = "../"; a.textContent = "your tasks page";
+    lede.append("Screen sharing and the microphone are off. Everything you submitted is on ", a, ", where you can follow each task.");
+  } else {
+    lede.textContent = "Screen sharing and the microphone are off. Send us the files listed here from your Downloads folder, then you can close this tab.";
   }
   state = "end";
   render();
@@ -1319,8 +1375,38 @@ try {
   if (who.email) $("who-email").value = who.email;
   if (who.company) $("who-co").value = who.company;
 } catch (e) {}
+async function initAccount() {
+  const n = $("acct-note");
+  if (!window.IVY) return;
+  let u = null;
+  try { u = await IVY.user(); } catch (e) { return; }
+  n.hidden = false;
+  n.textContent = "";
+  if (!u) {
+    const a = document.createElement("a"); a.href = "../"; a.textContent = "Sign in first";
+    n.append(a, " to send captures straight to us and track each task. Without signing in, your capture saves as a file on this computer.");
+    return;
+  }
+  acct = u;
+  let p = null;
+  try { p = await IVY.profile(u.id); } catch (e) {}
+  if (p && p.full_name) $("who-name").value = p.full_name;
+  if (p && p.company) $("who-co").value = p.company;
+  $("who-email").value = u.email || "";
+  $("who-email").readOnly = true;
+  const a = document.createElement("a"); a.href = "../"; a.textContent = "your tasks page";
+  n.append("Signed in. When you submit, this task goes to ", a, ".");
+  if (redoId) {
+    try {
+      const { data } = await IVY.sb.from("tasks").select("title,status").eq("id", redoId).maybeSingle();
+      if (data && data.status === "needs_detail") $("task-name").value = data.title; else redoId = null;
+    } catch (e) { redoId = null; }
+  }
+  nav();
+}
 buildVine();
 render();
+initAccount();
 </script>
 </body>
 </html>

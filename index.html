@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Your Tasks | The Ivy Path</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Instrument+Serif:ital@0;1&display=swap">
+<link rel="stylesheet" href="shared/ivy.css">
+</head>
+<body>
+<main>
+  <div class="top">
+    <a class="brand" href="./"><i></i>The Ivy Path</a>
+    <div class="who" id="who" hidden>
+      <a id="admin-link" href="admin/" hidden>Admin page</a>
+      <span id="who-email"></span>
+      <button class="text" id="btn-out" type="button">Sign out</button>
+    </div>
+  </div>
+
+  <!-- LOADING -->
+  <section id="v-loading"><p class="meta">Opening your tasks…</p></section>
+
+  <!-- SIGNED OUT -->
+  <section class="split" id="v-signin" hidden>
+    <div class="col">
+      <h1>Your tasks, in one&nbsp;place.</h1>
+      <p class="lede">Show us the work you'd like off your plate. Track each task here, from the day you record it to the day it runs on its own.</p>
+    </div>
+    <div class="col">
+      <form id="signin-form" autocomplete="on">
+        <div class="pair">
+          <div><label for="in-name">Your name</label><input type="text" id="in-name" placeholder="Jordan Lee" autocomplete="name"></div>
+          <div><label for="in-co">Company</label><input type="text" id="in-co" placeholder="Lee Plumbing" autocomplete="organization"></div>
+        </div>
+        <label for="in-email">Your email</label>
+        <input type="email" id="in-email" placeholder="jordan@leeplumbing.com" autocomplete="email">
+        <div class="actions" style="margin-top:28px">
+          <button class="primary" id="btn-link" type="submit">Email me a sign-in link</button>
+        </div>
+      </form>
+      <p class="note" id="signin-note" hidden></p>
+      <p class="meta" style="margin-top:18px">No password to remember. We email you a link, and clicking it signs you in on this computer.</p>
+    </div>
+  </section>
+
+  <!-- SIGNED IN -->
+  <section id="v-tasks" hidden>
+    <div class="split" style="margin-bottom:24px">
+      <div class="col">
+        <h2 id="hello">Your tasks</h2>
+        <p class="lede" id="hello-sub">Record a task whenever you do one you'd like automated. Each one shows up here with where it stands.</p>
+      </div>
+      <div class="col" id="name-fix" hidden>
+        <form id="name-form">
+          <div class="pair">
+            <div><label for="fix-name">Your name</label><input type="text" id="fix-name" autocomplete="name"></div>
+            <div><label for="fix-co">Company</label><input type="text" id="fix-co" autocomplete="organization"></div>
+          </div>
+          <button class="small" type="submit">Save my details</button>
+        </form>
+      </div>
+    </div>
+    <ul class="tasks" id="list"></ul>
+    <p class="empty" id="list-empty" hidden>No tasks yet. Record your first one and it will show up here as Submitted.</p>
+    <p class="note bad" id="list-error" hidden></p>
+  </section>
+
+  <footer class="nav" id="nav" hidden>
+    <p class="meta">Pictures and words from a capture are deleted 14 days after your plan is ready. The plan stays.</p>
+    <a class="btn primary" href="task-capture/">Record a new task</a>
+  </footer>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="shared/ivy.js"></script>
+<script>
+const { sb, STATUS, day, el } = IVY;
+const $ = (id) => document.getElementById(id);
+let me = null, mine = null, openPlan = null;
+
+function show(view) {
+  for (const v of ["loading", "signin", "tasks"]) $("v-" + v).hidden = v !== view;
+  $("who").hidden = view !== "tasks";
+  $("nav").hidden = view !== "tasks";
+}
+function note(id, text, cls) {
+  const n = $(id);
+  n.textContent = text || "";
+  n.hidden = !text;
+  n.className = "note" + (cls ? " " + cls : "");
+}
+
+// ---------- sign in ----------
+async function sendLink(e) {
+  e.preventDefault();
+  const email = $("in-email").value.trim(), name = $("in-name").value.trim(), company = $("in-co").value.trim();
+  if (!name) { note("signin-note", "Add your name so we know who you are.", "bad"); $("in-name").focus(); return; }
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { note("signin-note", "Enter your email address so we can send the link.", "bad"); $("in-email").focus(); return; }
+  $("btn-link").disabled = true;
+  note("signin-note", "Sending your link…");
+  const { error } = await IVY.sendLink(email, { full_name: name, company });
+  $("btn-link").disabled = false;
+  if (error) {
+    note("signin-note", /rate|limit|seconds/i.test(error.message)
+      ? "Too many links were requested just now. Wait a minute, then try again."
+      : "We couldn't send the link. Check the email address and try again.", "bad");
+    return;
+  }
+  try { localStorage.setItem("tc-who", JSON.stringify({ person: name, email, company })); } catch (err) {}
+  note("signin-note", "Check your email. We sent a sign-in link to " + email + ". Open it on this computer and you'll land back here, signed in.", "good");
+}
+
+// ---------- tasks ----------
+function explain(t) {
+  switch (t.status) {
+    case "submitted": return "We have your capture and are working out a plan. Nothing for you to do yet.";
+    case "needs_detail": return "We need a little more before we can plan this one.";
+    case "plan_ready": return "Your plan is ready. Read it, then approve it when you're happy.";
+    case "approved": return "You approved the plan" + (t.approved_at ? " on " + day(t.approved_at) : "") + ". We're building it now.";
+    case "live": return "This is running" + (t.live_at ? " as of " + day(t.live_at) : "") + ".";
+  }
+  return "";
+}
+
+function taskRow(t) {
+  const body = [el("p", { class: "task-body", text: explain(t) })];
+  if (t.status === "needs_detail") {
+    if (t.detail_note) body.push(el("p", { class: "plan", text: t.detail_note }));
+    body.push(el("div", { class: "actions" },
+      el("a", { class: "btn small primary", href: "task-capture/?redo=" + encodeURIComponent(t.id), text: "Record it again" })));
+  }
+  if (t.status === "plan_ready") {
+    const open = openPlan === t.id;
+    body.push(el("div", { class: "actions" },
+      el("button", { class: "small" + (open ? "" : " primary"), type: "button", text: open ? "Hide the plan" : "Read the plan",
+        onclick: () => { openPlan = open ? null : t.id; render(); } })));
+    if (open) {
+      body.push(el("div", { class: "plan", text: t.plan_md || "The plan is being attached. Check back shortly." }));
+      body.push(el("p", { class: "task-sub", text: "Approving tells us to build what this plan describes, and that you'll give us access to the accounts it names when we set it up together." }));
+      body.push(el("div", { class: "actions" },
+        el("button", { class: "small primary", type: "button", text: "Approve this plan", onclick: (e) => approve(t, e.target) })));
+    }
+  }
+  if (t.status === "approved") {
+    body.push(el("details", {},
+      el("summary", { text: "How to share your computer when we set this up together" }),
+      el("ol", { class: "steps" },
+        el("li", { text: "On a call with us, open remotedesktop.google.com/support in Chrome." }),
+        el("li", { text: "Under Share this screen, click Generate Code. The first time, Chrome asks to install a small helper first." }),
+        el("li", { text: "Read us the 12-digit code, then click Share when your computer asks." }),
+        el("li", { text: "Click Stop Sharing at any time to end it." }))));
+  }
+  if (t.status === "live" && t.built_summary) body.push(el("div", { class: "plan", text: t.built_summary }));
+  if ((t.status === "approved" || t.status === "live") && t.plan_md) {
+    body.push(el("details", {}, el("summary", { text: "See the plan you approved" }), el("div", { class: "plan", text: t.plan_md })));
+  }
+  return el("li", { class: "task" },
+    el("div", { class: "task-head" },
+      el("span", { class: "task-title", text: t.title }),
+      el("span", { class: "pill s-" + t.status, text: (STATUS[t.status] || {}).label || t.status })),
+    el("p", { class: "task-sub", text: "Recorded " + day(t.submitted_at) }),
+    body);
+}
+
+function render() {
+  const list = $("list");
+  list.innerHTML = "";
+  for (const t of mine || []) list.append(taskRow(t));
+  $("list-empty").hidden = !mine || mine.length > 0;
+}
+
+async function load() {
+  const { data, error } = await sb.from("tasks")
+    .select("id,title,status,detail_note,plan_md,built_summary,submitted_at,approved_at,live_at")
+    .eq("owner", me.id).order("submitted_at", { ascending: false });
+  if (error) { note("list-error", "We couldn't load your tasks. Refresh the page to try again.", "bad"); return; }
+  note("list-error", "");
+  mine = data;
+  render();
+}
+
+async function approve(t, btn) {
+  btn.disabled = true; btn.textContent = "Approving…";
+  const { error } = await sb.rpc("approve_plan", { task_id: t.id });
+  if (error) { btn.disabled = false; btn.textContent = "Approve this plan"; note("list-error", "We couldn't record your approval. Refresh the page and try again.", "bad"); return; }
+  openPlan = null;
+  await load();
+}
+
+async function saveName(e) {
+  e.preventDefault();
+  const full_name = $("fix-name").value.trim(), company = $("fix-co").value.trim();
+  if (!full_name) { $("fix-name").focus(); return; }
+  await sb.from("profiles").update({ full_name, company }).eq("id", me.id);
+  start();
+}
+
+async function start() {
+  me = await IVY.user();
+  if (!me) {
+    try {
+      const w = JSON.parse(localStorage.getItem("tc-who") || "{}");
+      if (w.person) $("in-name").value = w.person;
+      if (w.email) $("in-email").value = w.email;
+      if (w.company) $("in-co").value = w.company;
+    } catch (err) {}
+    show("signin");
+    return;
+  }
+  const p = await IVY.profile(me.id);
+  $("who-email").textContent = me.email || "";
+  $("admin-link").hidden = !(p && p.is_admin);
+  const first = p && p.full_name ? p.full_name.split(" ")[0] : "";
+  $("hello").textContent = first ? "Hello, " + first + "." : "Your tasks";
+  $("name-fix").hidden = !!(p && p.full_name);
+  if (p) { $("fix-name").value = p.full_name || ""; $("fix-co").value = p.company || ""; }
+  try { localStorage.setItem("tc-who", JSON.stringify({ person: (p && p.full_name) || "", email: me.email || "", company: (p && p.company) || "" })); } catch (err) {}
+  show("tasks");
+  await load();
+}
+
+$("signin-form").addEventListener("submit", sendLink);
+$("name-form").addEventListener("submit", saveName);
+$("btn-out").addEventListener("click", async () => { await sb.auth.signOut(); mine = null; start(); });
+sb.auth.onAuthStateChange((event) => { if (event === "SIGNED_IN" && !me) start(); });
+start();
+</script>
+</body>
+</html>

@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light">
+<meta name="robots" content="noindex">
+<title>Admin | The Ivy Path</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Instrument+Serif:ital@0;1&display=swap">
+<link rel="stylesheet" href="../shared/ivy.css">
+<style>
+.tabs { display: flex; gap: 6px; flex-wrap: wrap; margin: 22px 0 6px; }
+.tabs button { padding: 8px 16px; font-size: 15px; }
+.tabs button[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--bg); }
+.tabs .count { opacity: 0.6; margin-left: 6px; font-variant-numeric: tabular-nums; }
+.grid2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px 28px; }
+@media (max-width: 860px) { .grid2 { grid-template-columns: minmax(0, 1fr); } }
+table { width: 100%; border-collapse: collapse; font-size: 15px; }
+th { text-align: left; font-size: 13px; font-weight: 600; color: var(--muted); padding: 10px 12px 10px 0; border-bottom: 1px solid var(--line); }
+td { padding: 12px 12px 12px 0; border-bottom: 1px solid var(--line); vertical-align: top; overflow-wrap: anywhere; }
+td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.scroll { overflow-x: auto; }
+.work { display: flex; flex-direction: column; gap: 10px; max-width: 760px; }
+.work label { margin-top: 4px; }
+</style>
+</head>
+<body>
+<main>
+  <div class="top">
+    <a class="brand" href="../"><i></i>The Ivy Path</a>
+    <div class="who">
+      <a href="../">My tasks page</a>
+      <a class="btn small" href="https://remotedesktop.google.com/support" target="_blank" rel="noopener">Open Remote Desktop</a>
+      <span id="who-email"></span>
+    </div>
+  </div>
+
+  <section id="v-gate"><p class="meta" id="gate-msg">Checking who you are…</p></section>
+
+  <section id="v-admin" hidden>
+    <h2>What's been captured, planned and built</h2>
+    <p class="meta" id="sweep" style="margin-top:10px" hidden></p>
+    <div class="tabs" id="tabs"></div>
+    <p class="note bad" id="err" hidden></p>
+    <ul class="tasks" id="list"></ul>
+    <p class="empty" id="list-empty" hidden>Nothing here right now.</p>
+    <div class="scroll" id="clients" hidden></div>
+  </section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="../shared/ivy.js"></script>
+<script>
+const { sb, STATUS, day, el } = IVY;
+const $ = (id) => document.getElementById(id);
+const TABS = [
+  { id: "you", label: "Needs you", test: (t) => t.status === "submitted" || t.status === "approved" },
+  { id: "client", label: "Waiting on client", test: (t) => t.status === "needs_detail" || t.status === "plan_ready" },
+  { id: "live", label: "Live", test: (t) => t.status === "live" },
+  { id: "all", label: "All tasks", test: () => true },
+  { id: "clients", label: "Clients", test: null },
+];
+let tasks = [], people = {}, tab = "you", open = null, busy = false;
+
+function err(text) { const n = $("err"); n.textContent = text || ""; n.hidden = !text; }
+function size(b) { return b ? (b / 1048576).toFixed(1) + " MB" : ""; }
+function mins(ms) { return ms ? Math.max(1, Math.round(ms / 60000)) + " min" : ""; }
+
+async function load() {
+  const [t, p] = await Promise.all([
+    sb.from("tasks").select("*").order("submitted_at", { ascending: false }),
+    sb.from("profiles").select("*"),
+  ]);
+  if (t.error || p.error) { err("The list couldn't be loaded. Refresh the page to try again."); return; }
+  err("");
+  tasks = t.data;
+  people = Object.fromEntries(p.data.map((x) => [x.id, x]));
+  render();
+}
+
+function render() {
+  const tabs = $("tabs");
+  tabs.innerHTML = "";
+  for (const tb of TABS) {
+    const n = tb.test ? tasks.filter(tb.test).length : Object.values(people).filter((x) => !x.is_admin).length;
+    tabs.append(el("button", { type: "button", "aria-pressed": String(tab === tb.id), onclick: () => { tab = tb.id; open = null; render(); } },
+      tb.label, el("span", { class: "count", text: String(n) })));
+  }
+  const isClients = tab === "clients";
+  $("list").hidden = isClients;
+  $("clients").hidden = !isClients;
+  if (isClients) { $("list-empty").hidden = true; renderClients(); return; }
+  const rows = tasks.filter(TABS.find((x) => x.id === tab).test);
+  const list = $("list");
+  list.innerHTML = "";
+  for (const t of rows) list.append(taskRow(t));
+  $("list-empty").hidden = rows.length > 0;
+}
+
+function who(t) {
+  const p = people[t.owner] || {};
+  return [p.full_name || "(no name)", p.company, p.email].filter(Boolean).join(" · ");
+}
+
+function taskRow(t) {
+  const p = people[t.owner] || {};
+  const facts = [who(t), "Submitted " + day(t.submitted_at), mins(t.duration_ms), t.shot_count ? t.shot_count + " pictures" : "", size(t.capture_bytes)].filter(Boolean).join(" · ");
+  const row = el("li", { class: "task" },
+    el("div", { class: "task-head" },
+      el("span", { class: "task-title", text: t.title }),
+      el("span", { class: "pill s-" + t.status, text: STATUS[t.status].label })),
+    el("p", { class: "task-sub", text: facts }));
+
+  const captureLine = t.purged_at ? "Capture deleted " + day(t.purged_at) + "."
+    : !t.capture_path ? "No capture file."
+    : t.purge_after ? "Capture will be deleted on " + day(t.purge_after) + "."
+    : "Capture is kept until 14 days after the plan is marked ready.";
+  const acts = el("div", { class: "actions" });
+  if (t.capture_path && !t.purged_at) acts.append(el("button", { class: "small", type: "button", text: "Download capture", onclick: () => download(t) }));
+  acts.append(el("button", { class: "small" + (open === t.id ? "" : " primary"), type: "button", text: open === t.id ? "Close" : "Open",
+    onclick: () => { open = open === t.id ? null : t.id; render(); } }));
+  if (p.email) acts.append(el("a", { class: "btn small", href: "mailto:" + p.email + "?subject=" + encodeURIComponent("Your task: " + t.title), text: "Email client" }));
+  row.append(acts, el("p", { class: "task-sub", text: captureLine }));
+  if (open === t.id) row.append(workArea(t));
+  return row;
+}
+
+function workArea(t) {
+  const box = el("div", { class: "work" });
+  if (t.approved_at) box.append(el("p", { class: "task-sub", text: "Approved by " + (t.approved_by_name || "the client") + " on " + day(t.approved_at) + "." }));
+  if (t.answers) {
+    const names = { often: "How often", decide: "Decisions and checks", wrong: "What goes wrong", tried: "Already tried", hard: "On a hard day" };
+    box.append(el("div", { class: "plan", text: Object.entries(names).map(([k, v]) => v + ": " + (t.answers[k] || "(not answered)")).join("\n") }));
+  }
+  if (t.notes_md) box.append(el("details", {}, el("summary", { text: "Capture notes and words" }), el("div", { class: "plan", text: t.notes_md })));
+
+  // The plan
+  const plan = el("textarea", { id: "plan-" + t.id, rows: "8", placeholder: "Write or paste the automation plan here." });
+  plan.value = t.plan_md || "";
+  box.append(el("label", { for: "plan-" + t.id, text: "Automation plan (kept after the capture is deleted)" }), plan);
+  const planActs = el("div", { class: "actions" },
+    el("button", { class: "small", type: "button", text: "Save plan", onclick: () => update(t, { plan_md: plan.value }) }));
+  if (t.status === "submitted" || t.status === "needs_detail") {
+    planActs.append(el("button", { class: "small primary", type: "button", text: "Save and mark Plan ready",
+      onclick: () => { if (!plan.value.trim()) { err("Write the plan before marking it ready."); plan.focus(); return; } update(t, { plan_md: plan.value, status: "plan_ready", detail_note: "" }); } }));
+  }
+  box.append(planActs);
+
+  // Ask for more detail
+  if (t.status === "submitted" || t.status === "needs_detail") {
+    const ask = el("textarea", { id: "ask-" + t.id, rows: "3", placeholder: "Tell the client exactly what is missing, in plain words." });
+    ask.value = t.detail_note || "";
+    box.append(el("label", { for: "ask-" + t.id, text: "Need more from the client?" }), ask,
+      el("div", { class: "actions" }, el("button", { class: "small", type: "button", text: "Send back as Needs more detail",
+        onclick: () => { if (!ask.value.trim()) { err("Say what is missing before sending it back."); ask.focus(); return; } update(t, { status: "needs_detail", detail_note: ask.value }); } })));
+  }
+
+  // Built
+  if (t.status === "approved" || t.status === "live") {
+    const built = el("textarea", { id: "built-" + t.id, rows: "4", placeholder: "What was built, where it runs, and how the client uses it." });
+    built.value = t.built_summary || "";
+    box.append(el("label", { for: "built-" + t.id, text: "What was built (the client sees this once it's Live)" }), built);
+    const b = el("div", { class: "actions" }, el("button", { class: "small", type: "button", text: "Save", onclick: () => update(t, { built_summary: built.value }) }));
+    if (t.status === "approved") b.append(el("button", { class: "small primary", type: "button", text: "Save and mark Live",
+      onclick: () => update(t, { built_summary: built.value, status: "live" }) }));
+    box.append(b);
+  }
+
+  // Delete the capture
+  if (t.capture_path && !t.purged_at) {
+    const del = el("button", { class: "text", type: "button", text: "Delete the capture now" });
+    del.addEventListener("click", () => {
+      if (del.dataset.armed) { purge(t); return; }
+      del.dataset.armed = "1"; del.textContent = "Click again to delete the pictures and words for good";
+    });
+    box.append(del);
+  }
+  return box;
+}
+
+function renderClients() {
+  const box = $("clients");
+  box.innerHTML = "";
+  const rows = Object.values(people).filter((p) => !p.is_admin).map((p) => {
+    const ts = tasks.filter((t) => t.owner === p.id);
+    return { p, ts, live: ts.filter((t) => t.status === "live") };
+  }).sort((a, b) => b.ts.length - a.ts.length);
+  if (!rows.length) { box.append(el("p", { class: "empty", text: "No clients have signed in yet." })); return; }
+  const table = el("table", {},
+    el("thead", {}, el("tr", {}, ["Client", "Company", "Tasks", "Live", "What's been built", "Joined"].map((h) => el("th", { scope: "col", text: h })))),
+    el("tbody", {}, rows.map(({ p, ts, live }) => el("tr", {},
+      el("td", {}, el("div", { text: p.full_name || "(no name)" }), el("div", { class: "task-sub", text: p.email })),
+      el("td", { text: p.company || "" }),
+      el("td", { class: "num", text: String(ts.length) }),
+      el("td", { class: "num", text: String(live.length) }),
+      el("td", {}, live.length ? live.map((t) => el("div", { text: t.title })) : el("span", { class: "task-sub", text: "Nothing live yet" })),
+      el("td", { class: "num", text: day(p.created_at) })))));
+  box.append(table);
+}
+
+async function update(t, patch) {
+  if (busy) return;
+  busy = true; err("");
+  const { error } = await sb.from("tasks").update(patch).eq("id", t.id);
+  busy = false;
+  if (error) { err("That change wasn't saved. Refresh the page and try again."); return; }
+  await load();
+}
+
+async function download(t) {
+  err("");
+  const { data, error } = await sb.storage.from("captures").createSignedUrl(t.capture_path, 120, { download: true });
+  if (error || !data) { err("The capture file couldn't be opened. It may already be deleted."); return; }
+  window.open(data.signedUrl, "_blank", "noopener");
+}
+
+async function purge(t, quiet) {
+  const { error } = await sb.storage.from("captures").remove([t.capture_path]);
+  if (error) { if (!quiet) err("The capture file couldn't be deleted. Try again."); return false; }
+  const r = await sb.rpc("mark_purged", { task_id: t.id });
+  if (r.error) { if (!quiet) err("The file was deleted, but the task wasn't updated. Refresh and try again."); return false; }
+  if (!quiet) await load();
+  return true;
+}
+
+// Delete any capture that is past its date. Runs each time this page opens.
+async function sweep() {
+  const due = tasks.filter((t) => t.capture_path && !t.purged_at && t.purge_after && new Date(t.purge_after) < new Date());
+  if (!due.length) return;
+  let done = 0;
+  for (const t of due) if (await purge(t, true)) done++;
+  const n = $("sweep");
+  n.textContent = done + (done === 1 ? " capture was" : " captures were") + " past the 14-day limit and deleted just now.";
+  n.hidden = false;
+  await load();
+}
+
+async function start() {
+  const me = await IVY.user();
+  if (!me) { $("gate-msg").innerHTML = ""; $("gate-msg").append("Sign in on the ", el("a", { href: "../", text: "tasks page" }), " first, then come back here."); return; }
+  $("who-email").textContent = me.email || "";
+  const p = await IVY.profile(me.id);
+  if (!p || !p.is_admin) { $("gate-msg").textContent = "This page is for The Ivy Path's admin only."; return; }
+  $("v-gate").hidden = true;
+  $("v-admin").hidden = false;
+  await load();
+  await sweep();
+}
+start();
+</script>
+</body>
+</html>
