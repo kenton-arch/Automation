@@ -616,9 +616,9 @@ function render() {
   $("btn-share").textContent = screenOk ? "Share again" : "Share my screen";
   // mic step
   $("mic-ok").hidden = !micOk;
-  $("btn-mic-test").hidden = micOk;
+  $("btn-mic-test").className = micOk ? "" : "primary";
   $("btn-mic-test").disabled = micTesting;
-  $("btn-mic-test").textContent = micTesting ? "Listening\u2026" : "Test my microphone";
+  $("btn-mic-test").textContent = micTesting ? "Listening\u2026" : micOk ? "Test it again" : "Test my microphone";
   nav();
 }
 
@@ -866,7 +866,10 @@ function agree() {
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { note("intro-error", "Add your email address so we can send your plan to you."); $("who-email").focus(); return; }
   note("intro-error", "");
   who = { person, email, company, agreedAt: new Date().toLocaleString() };
-  try { localStorage.setItem("tc-who", JSON.stringify({ person, email, company })); } catch (e) {}
+  try {
+    localStorage.setItem("tc-who", JSON.stringify({ person, email, company }));
+    localStorage.setItem("tc-agreed", JSON.stringify({ email: email.toLowerCase(), at: who.agreedAt }));
+  } catch (e) {}
   go("screen");
 }
 
@@ -965,7 +968,7 @@ function testHeard(text, final) {
   $("mic-wait").hidden = true;
   $("mic-heard").textContent = "“" + text + "”";
   $("mic-heard").hidden = false;
-  if (!micOk) { micOk = true; note("mic-note", ""); render(); }
+  if (!micOk) { micOk = true; note("mic-note", ""); try { localStorage.setItem("tc-mic", "1"); } catch (e) {} render(); }
   if (final) { micTesting = false; clearTimeout(micTimer); stopSpeech(); render(); }
 }
 function leaveMic() {
@@ -1396,6 +1399,15 @@ async function initAccount() {
   $("who-email").readOnly = true;
   const a = document.createElement("a"); a.href = "../"; a.textContent = "your tasks page";
   n.append("Signed in. When you submit, this task goes to ", a, ".");
+  // Someone who has agreed before, on this computer, goes straight to sharing their screen.
+  try {
+    const ag = JSON.parse(localStorage.getItem("tc-agreed") || "null");
+    const name = $("who-name").value.trim();
+    if (ag && name && ag.email === (u.email || "").toLowerCase() && state === "setup" && step === "intro") {
+      who = { person: name, email: u.email, company: $("who-co").value.trim(), agreedAt: ag.at };
+      go("screen");
+    }
+  } catch (e) {}
   if (redoId) {
     try {
       const { data } = await IVY.sb.from("tasks").select("title,status").eq("id", redoId).maybeSingle();
@@ -1405,6 +1417,9 @@ async function initAccount() {
   nav();
 }
 buildVine();
+render();
+try { micOk = localStorage.getItem("tc-mic") === "1"; } catch (e) {}
+if (micOk) { $("mic-wait").hidden = true; }
 render();
 initAccount();
 </script>
