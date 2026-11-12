@@ -443,7 +443,7 @@ const big = document.createElement("canvas");
 function fileName(task, d) {
   const pad = (n) => String(n).padStart(2, "0");
   const clean = (task || "").replace(/[^A-Za-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 40) || "task";
-  return "Task Capture " + d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()) + " " + pad(d.getHours()) + "." + pad(d.getMinutes()) + " - " + clean + ".zip";
+  return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()) + " " + pad(d.getHours()) + "." + pad(d.getMinutes()) + " - " + clean + " - Task Capture.zip";
 }
 
 function render() {
